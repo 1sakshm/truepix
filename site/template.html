@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truepix</title>
+<meta name="description" content="A lossless image codec for archives. Smaller files than JPEG XL at its top effort, with every pixel exact.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: a measured lab report. Big type and the lattice up top, then results read as instrument rows. */
+:root {
+  --paper: #edf0f5;
+  --panel: #f8f9fc;
+  --ink: #10182b;
+  --muted: #535d76;
+  --line: #cbd2df;
+  --accent: #1f3fd1;
+  --rival: #8b95ab;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d1220; --panel: #151c2e; --ink: #e8ecf5; --muted: #a0aac0;
+    --line: #2b3550; --accent: #93a8ff; --rival: #5f6b87; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0d1220; --panel: #151c2e; --ink: #e8ecf5; --muted: #a0aac0;
+  --line: #2b3550; --accent: #93a8ff; --rival: #5f6b87; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--body);
+}
+.wrap {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding-inline: 20px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-block: 20px;
+}
+.name { font: 700 1.25rem var(--display); }
+nav ul { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
+a { color: var(--accent); text-underline-offset: 3px; }
+nav a { color: var(--muted); font-size: 0.9375rem; text-decoration: none; }
+nav a:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  padding-block: 40px 56px;
+}
+h1 {
+  margin: 0 0 20px;
+  font: 700 clamp(2.5rem, 7vw, 4.4rem)/1.02 var(--display);
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.lede { max-width: 33em; margin: 0 0 24px; color: var(--muted); font-size: 1.1875rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.button.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.button:hover { border-color: var(--accent); }
+
+.lattice {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--accent);
+  -webkit-mask: var(--grid) center / contain no-repeat;
+  mask: var(--grid) center / contain no-repeat;
+  image-rendering: pixelated;
+}
+.lattice.kodak { --grid: url("@@KODAK@@"); }
+.lattice.ordinary { --grid: url("@@ORDINARY@@"); background: var(--muted); }
+figure { min-width: 0; margin: 0; }
+figcaption { margin-top: 12px; color: var(--muted); font-size: 0.9375rem; }
+
+section { padding-block: 48px; border-top: 1px solid var(--line); }
+h2 {
+  max-width: 22em;
+  margin: 0 0 12px;
+  font: 700 clamp(1.6rem, 4vw, 2.3rem)/1.12 var(--display);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h3 { margin: 32px 0 10px; font: 600 1.125rem var(--display); }
+p { max-width: 42em; margin: 0 0 14px; }
+.note { color: var(--muted); font-size: 0.9375rem; }
+
+.rows { margin: 28px 0 8px; padding: 0; list-style: none; }
+.row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 62px 104px;
+  gap: 14px;
+  align-items: center;
+  padding-block: 9px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9875rem;
+}
+.track { height: 14px; }
+.bar { display: block; height: 100%; background: var(--rival); }
+.row-bpp, .row-note { font-family: var(--data); font-size: 0.875rem; font-variant-numeric: tabular-nums; text-align: right; }
+.row-note { color: var(--muted); font-size: 0.8125rem; }
+.row.ours { font-weight: 600; }
+.row.ours .bar { background: var(--accent); }
+.row.ours .row-bpp, .row.ours .row-note { color: var(--accent); }
+
+svg { display: block; width: 100%; height: auto; }
+.grid { stroke: var(--line); stroke-width: 1; }
+.saving { fill: var(--accent); }
+.tick { fill: var(--muted); font: 12px var(--data); }
+
+.scroll { overflow-x: auto; margin-top: 16px; }
+table { width: 100%; min-width: 460px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; }
+thead th { color: var(--muted); font-size: 0.875rem; }
+th:first-child { text-align: left; }
+td { font: 400 0.9rem var(--data); }
+tr.ours th, tr.ours td { color: var(--accent); font-weight: 600; }
+
+.steps { display: grid; gap: 0; margin: 24px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li {
+  display: grid;
+  grid-template-columns: 44px 150px minmax(0, 1fr);
+  gap: 12px;
+  padding-block: 13px;
+  border-bottom: 1px solid var(--line);
+  counter-increment: step;
+}
+.steps li::before { content: counter(step); color: var(--accent); font: 600 0.9375rem var(--data); }
+.steps strong { font: 600 1.0625rem var(--display); }
+.steps span { color: var(--muted); }
+
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; max-width: 620px; margin-top: 24px; }
+
+ul.limits { display: grid; gap: 10px; max-width: 44em; margin: 16px 0 0; padding-left: 20px; }
+pre {
+  overflow-x: auto;
+  margin: 16px 0;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font: 400 0.875rem/1.7 var(--data);
+}
+footer { padding-block: 24px 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9375rem; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: minmax(0, 1fr); padding-block: 20px 40px; }
+  .hero figure { max-width: 300px; }
+  .row { grid-template-columns: minmax(0, 1fr) 62px 96px; }
+  .track { grid-column: 1 / -1; grid-row: 2; }
+  .steps li { grid-template-columns: 30px minmax(0, 1fr); }
+  .steps span { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Main">
+    <span class="name">Truepix</span>
+    <ul>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#speed">Speed</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#limits">Limits</a></li>
+      <li><a href="#use">Use it</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>Smaller than JPEG XL. Every pixel exact.</h1>
+      <p class="lede">Truepix is a lossless image codec for archives. On 24 photos it had never seen, JPEG XL at its top effort came out 3.62% larger, and Truepix won on every one. The price is slow decoding.</p>
+      <div class="actions">
+        <a class="button primary" href="paper.pdf">Read the paper</a>
+        <a class="button" href="#results">See the results</a>
+      </div>
+    </div>
+    <figure>
+      <div class="lattice kodak" role="img" aria-label="A diagonal grid of dark squares, showing which colour differences occur in the Kodak images."></div>
+      <figcaption>The hidden colour grid in the Kodak test images, recovered from pixels alone.</figcaption>
+    </figure>
+  </header>
+</div>
+
+<div class="wrap">
+  <section id="results">
+    <h2>The final test, on photos kept back until the code was frozen</h2>
+    <p>These are 24 DIV2K photos of about 2.8 megapixels each. Each number is bits per pixel across the whole set, so lower is better. Every Truepix file decoded back exactly.</p>
+    <ul class="rows">
+@@METHODS@@
+    </ul>
+
+    <h3>Every photo, against JPEG XL effort 10</h3>
+    <p>The saving ran from @@LOW@@% to @@HIGH@@% of the JPEG XL file. No image lost.</p>
+    @@SAVINGS@@
+
+    <h3>Three separate tests agree</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th scope="col">Test set (24 photos each)</th><th scope="col">JPEG XL e10 larger by</th><th scope="col">Truepix wins</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">DIV2K 0801 to 0824</th><td>4.28%</td><td>23 of 24</td></tr>
+          <tr><th scope="row">DIV2K 0841 to 0864</th><td>4.29%</td><td>24 of 24</td></tr>
+          <tr class="ours"><th scope="row">DIV2K 0865 to 0888, final build</th><td>3.62%</td><td>24 of 24</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Only the last row used the final build. The first two ran on earlier versions.</p>
+  </section>
+
+  <section id="speed">
+    <h2>Decoding takes about 141 times longer than JPEG XL</h2>
+    <p>Truepix does all of its modelling again to decode, so opening a photo takes seconds. That rules out web pages and suits archives, where a file is written once and rarely read.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th scope="col">Mean per image, 5 photos</th><th scope="col">Encode (s)</th><th scope="col">Decode (s)</th><th scope="col">Total size</th></tr></thead>
+        <tbody>
+@@SPEED@@
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Measured on a Ryzen 7 5800HS with 8 cores. Other work may have shared the machine for part of the run. Size is relative to Truepix on the same five photos.</p>
+  </section>
+
+  <section id="how">
+    <h2>How a pixel gets coded</h2>
+    <p>Truepix works through each sample in order, and the decoder repeats the same steps to stay in step with it.</p>
+    <ol class="steps">
+      <li><strong>Predict</strong><span>Four least-squares predictors and eleven simple ones guess the next value, and an adaptive blend combines them.</span></li>
+      <li><strong>Correct</strong><span>Bias cancelling removes the errors the blend keeps making in similar places.</span></li>
+      <li><strong>Model</strong><span>21 contexts estimate each bit, including exact colour differences that can learn a colour grid with no formula.</span></li>
+      <li><strong>Mix</strong><span>Five small neural mixers and a final one weigh those estimates, then two adaptive maps refine the result.</span></li>
+      <li><strong>Code</strong><span>A 32-bit binary arithmetic coder turns the final probabilities into bytes.</span></li>
+    </ol>
+
+    <h3>What the Kodak benchmark was hiding</h3>
+    <p>A slow general compressor, paq8px, beat image codecs by a surprising margin on the famous Kodak test set. About 90% of that gap was colour. Kodak's images came from Photo CD, so their RGB values sit on a stretched integer grid. Only 12.8% of all RGB colours can occur on it, and those colours hold 87.3% of Kodak's pixels.</p>
+    <div class="compare">
+      <figure>
+        <div class="lattice kodak" role="img" aria-label="A regular diagonal grid of squares."></div>
+        <figcaption>Kodak: colour differences fall on a grid.</figcaption>
+      </figure>
+      <figure>
+        <div class="lattice ordinary" role="img" aria-label="An even, unstructured spread of squares."></div>
+        <figcaption>An ordinary photo: no grid.</figcaption>
+      </figure>
+    </div>
+    <p style="margin-top:20px">Exact-difference contexts turned that finding into a gain for ordinary images too. On Kodak itself, Truepix reaches 5.723 bits per pixel. It was tuned on those images, so that isn't a fair score.</p>
+
+    <h3>The same file on every build</h3>
+    <p>Encoder and decoder must agree on every bit of floating-point maths. Files were byte-identical across seven builds using GCC, Clang, 32-bit x86 and WebAssembly, and all 245 cross-build decodes came back exact.</p>
+  </section>
+
+  <section id="limits">
+    <h2>What it doesn't do</h2>
+    <ul class="limits">
+      <li><strong>paq8px still compresses further.</strong> On the tuning crops it was about 5% smaller on green and 7% smaller on colour, and it is far slower.</li>
+      <li><strong>Pixels only.</strong> Colour profiles and other metadata are not stored.</li>
+      <li><strong>8-bit images only.</strong> Grey or RGB, with or without alpha. Anything else is refused.</li>
+      <li><strong>ARM is untested.</strong> It compiles for ARM64 but has never been run there.</li>
+      <li><strong>Nobody else has checked this yet.</strong> The results have not been independently replicated.</li>
+      <li><strong>The file format may change.</strong> Keep your originals for now.</li>
+    </ul>
+  </section>
+
+  <section id="use">
+    <h2>Use it</h2>
+    <p>Truepix is a C++ codec with a small Python command-line tool. The source isn't public yet.</p>
+<pre><code>g++ -std=c++17 -O3 -mavx2 -ffp-contract=off -static truepix-core.cpp -o truepix-core.exe
+
+uv run truepix compress photo.png --verify   # writes photo.tpix
+uv run truepix decompress photo.tpix         # writes photo.png</code></pre>
+    <p>The full method, every result and its limits are in <a href="paper.pdf">the paper (PDF)</a>.</p>
+  </section>
+</div>
+
+<div class="wrap">
+  <footer>Truepix, 2026. The numbers here come from the results behind the paper.</footer>
+</div>
+</body>
+</html>

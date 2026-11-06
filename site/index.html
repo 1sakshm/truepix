@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truepix</title>
+<meta name="description" content="A lossless image codec for archives. Smaller files than JPEG XL at its top effort, with every pixel exact.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: a measured lab report. Big type and the lattice up top, then results read as instrument rows. */
+:root {
+  --paper: #edf0f5;
+  --panel: #f8f9fc;
+  --ink: #10182b;
+  --muted: #535d76;
+  --line: #cbd2df;
+  --accent: #1f3fd1;
+  --rival: #8b95ab;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d1220; --panel: #151c2e; --ink: #e8ecf5; --muted: #a0aac0;
+    --line: #2b3550; --accent: #93a8ff; --rival: #5f6b87; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0d1220; --panel: #151c2e; --ink: #e8ecf5; --muted: #a0aac0;
+  --line: #2b3550; --accent: #93a8ff; --rival: #5f6b87; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--body);
+}
+.wrap {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding-inline: 20px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-block: 20px;
+}
+.name { font: 700 1.25rem var(--display); }
+nav ul { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
+a { color: var(--accent); text-underline-offset: 3px; }
+nav a { color: var(--muted); font-size: 0.9375rem; text-decoration: none; }
+nav a:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  padding-block: 40px 56px;
+}
+h1 {
+  margin: 0 0 20px;
+  font: 700 clamp(2.5rem, 7vw, 4.4rem)/1.02 var(--display);
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.lede { max-width: 33em; margin: 0 0 24px; color: var(--muted); font-size: 1.1875rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.button.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.button:hover { border-color: var(--accent); }
+
+.lattice {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--accent);
+  -webkit-mask: var(--grid) center / contain no-repeat;
+  mask: var(--grid) center / contain no-repeat;
+  image-rendering: pixelated;
+}
+.lattice.kodak { --grid: url("data:image/png;base64,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"); }
+.lattice.ordinary { --grid: url("data:image/png;base64,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"); background: var(--muted); }
+figure { min-width: 0; margin: 0; }
+figcaption { margin-top: 12px; color: var(--muted); font-size: 0.9375rem; }
+
+section { padding-block: 48px; border-top: 1px solid var(--line); }
+h2 {
+  max-width: 22em;
+  margin: 0 0 12px;
+  font: 700 clamp(1.6rem, 4vw, 2.3rem)/1.12 var(--display);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h3 { margin: 32px 0 10px; font: 600 1.125rem var(--display); }
+p { max-width: 42em; margin: 0 0 14px; }
+.note { color: var(--muted); font-size: 0.9375rem; }
+
+.rows { margin: 28px 0 8px; padding: 0; list-style: none; }
+.row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 62px 104px;
+  gap: 14px;
+  align-items: center;
+  padding-block: 9px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9875rem;
+}
+.track { height: 14px; }
+.bar { display: block; height: 100%; background: var(--rival); }
+.row-bpp, .row-note { font-family: var(--data); font-size: 0.875rem; font-variant-numeric: tabular-nums; text-align: right; }
+.row-note { color: var(--muted); font-size: 0.8125rem; }
+.row.ours { font-weight: 600; }
+.row.ours .bar { background: var(--accent); }
+.row.ours .row-bpp, .row.ours .row-note { color: var(--accent); }
+
+svg { display: block; width: 100%; height: auto; }
+.grid { stroke: var(--line); stroke-width: 1; }
+.saving { fill: var(--accent); }
+.tick { fill: var(--muted); font: 12px var(--data); }
+
+.scroll { overflow-x: auto; margin-top: 16px; }
+table { width: 100%; min-width: 460px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; }
+thead th { color: var(--muted); font-size: 0.875rem; }
+th:first-child { text-align: left; }
+td { font: 400 0.9rem var(--data); }
+tr.ours th, tr.ours td { color: var(--accent); font-weight: 600; }
+
+.steps { display: grid; gap: 0; margin: 24px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li {
+  display: grid;
+  grid-template-columns: 44px 150px minmax(0, 1fr);
+  gap: 12px;
+  padding-block: 13px;
+  border-bottom: 1px solid var(--line);
+  counter-increment: step;
+}
+.steps li::before { content: counter(step); color: var(--accent); font: 600 0.9375rem var(--data); }
+.steps strong { font: 600 1.0625rem var(--display); }
+.steps span { color: var(--muted); }
+
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; max-width: 620px; margin-top: 24px; }
+
+ul.limits { display: grid; gap: 10px; max-width: 44em; margin: 16px 0 0; padding-left: 20px; }
+pre {
+  overflow-x: auto;
+  margin: 16px 0;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font: 400 0.875rem/1.7 var(--data);
+}
+footer { padding-block: 24px 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9375rem; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: minmax(0, 1fr); padding-block: 20px 40px; }
+  .hero figure { max-width: 300px; }
+  .row { grid-template-columns: minmax(0, 1fr) 62px 96px; }
+  .track { grid-column: 1 / -1; grid-row: 2; }
+  .steps li { grid-template-columns: 30px minmax(0, 1fr); }
+  .steps span { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Main">
+    <span class="name">Truepix</span>
+    <ul>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#speed">Speed</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#limits">Limits</a></li>
+      <li><a href="#use">Use it</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>Smaller than JPEG XL. Every pixel exact.</h1>
+      <p class="lede">Truepix is a lossless image codec for archives. On 24 photos it had never seen, JPEG XL at its top effort came out 3.62% larger, and Truepix won on every one. The price is slow decoding.</p>
+      <div class="actions">
+        <a class="button primary" href="paper.pdf">Read the paper</a>
+        <a class="button" href="#results">See the results</a>
+      </div>
+    </div>
+    <figure>
+      <div class="lattice kodak" role="img" aria-label="A diagonal grid of dark squares, showing which colour differences occur in the Kodak images."></div>
+      <figcaption>The hidden colour grid in the Kodak test images, recovered from pixels alone.</figcaption>
+    </figure>
+  </header>
+</div>
+
+<div class="wrap">
+  <section id="results">
+    <h2>The final test, on photos kept back until the code was frozen</h2>
+    <p>These are 24 DIV2K photos of about 2.8 megapixels each. Each number is bits per pixel across the whole set, so lower is better. Every Truepix file decoded back exactly.</p>
+    <ul class="rows">
+<li class="row ours"><span class="row-name">Truepix</span><span class="track"><span class="bar" style="width:63.2%"></span></span><span class="row-bpp">8.110</span><span class="row-note">smallest</span></li>
+<li class="row"><span class="row-name">JPEG XL, effort 10</span><span class="track"><span class="bar" style="width:65.5%"></span></span><span class="row-bpp">8.404</span><span class="row-note">3.62% larger</span></li>
+<li class="row"><span class="row-name">JPEG XL, effort 9</span><span class="track"><span class="bar" style="width:67.0%"></span></span><span class="row-bpp">8.596</span><span class="row-note">5.99% larger</span></li>
+<li class="row"><span class="row-name">FLIF</span><span class="track"><span class="bar" style="width:69.1%"></span></span><span class="row-bpp">8.863</span><span class="row-note">9.28% larger</span></li>
+<li class="row"><span class="row-name">WebP lossless</span><span class="track"><span class="bar" style="width:73.6%"></span></span><span class="row-bpp">9.447</span><span class="row-note">16.48% larger</span></li>
+<li class="row"><span class="row-name">PNG as distributed</span><span class="track"><span class="bar" style="width:100.0%"></span></span><span class="row-bpp">12.832</span><span class="row-note">58.22% larger</span></li>
+    </ul>
+
+    <h3>Every photo, against JPEG XL effort 10</h3>
+    <p>The saving ran from 0.44% to 7.52% of the JPEG XL file. No image lost.</p>
+    <svg viewBox="0 0 720 210" role="img" aria-label="Truepix saved between 0.44 and 7.52 percent against JPEG XL effort 10 on each of 24 photos."><line class="grid" x1="34" x2="720" y1="184.0" y2="184.0"/><text class="tick" x="26" y="188.0" text-anchor="end">0%</text><line class="grid" x1="34" x2="720" y1="141.0" y2="141.0"/><text class="tick" x="26" y="145.0" text-anchor="end">2%</text><line class="grid" x1="34" x2="720" y1="98.0" y2="98.0"/><text class="tick" x="26" y="102.0" text-anchor="end">4%</text><line class="grid" x1="34" x2="720" y1="55.0" y2="55.0"/><text class="tick" x="26" y="59.0" text-anchor="end">6%</text><line class="grid" x1="34" x2="720" y1="12.0" y2="12.0"/><text class="tick" x="26" y="16.0" text-anchor="end">8%</text><rect class="saving" x="38.0" y="174.6" width="20.6" height="9.4"><title>Image 0872: 0.44% saved</title></rect><rect class="saving" x="66.6" y="165.3" width="20.6" height="18.7"><title>Image 0875: 0.87% saved</title></rect><rect class="saving" x="95.2" y="145.3" width="20.6" height="38.7"><title>Image 0888: 1.80% saved</title></rect><rect class="saving" x="123.8" y="140.3" width="20.6" height="43.7"><title>Image 0868: 2.03% saved</title></rect><rect class="saving" x="152.3" y="139.1" width="20.6" height="44.9"><title>Image 0870: 2.09% saved</title></rect><rect class="saving" x="180.9" y="133.8" width="20.6" height="50.2"><title>Image 0865: 2.33% saved</title></rect><rect class="saving" x="209.5" y="132.1" width="20.6" height="51.9"><title>Image 0886: 2.42% saved</title></rect><rect class="saving" x="238.1" y="131.3" width="20.6" height="52.7"><title>Image 0871: 2.45% saved</title></rect><rect class="saving" x="266.7" y="130.2" width="20.6" height="53.8"><title>Image 0867: 2.50% saved</title></rect><rect class="saving" x="295.3" y="129.9" width="20.6" height="54.1"><title>Image 0873: 2.52% saved</title></rect><rect class="saving" x="323.8" y="126.7" width="20.6" height="57.3"><title>Image 0874: 2.67% saved</title></rect><rect class="saving" x="352.4" y="117.7" width="20.6" height="66.3"><title>Image 0879: 3.08% saved</title></rect><rect class="saving" x="381.0" y="111.5" width="20.6" height="72.5"><title>Image 0885: 3.37% saved</title></rect><rect class="saving" x="409.6" y="108.9" width="20.6" height="75.1"><title>Image 0876: 3.50% saved</title></rect><rect class="saving" x="438.2" y="102.3" width="20.6" height="81.7"><title>Image 0883: 3.80% saved</title></rect><rect class="saving" x="466.8" y="97.4" width="20.6" height="86.6"><title>Image 0882: 4.03% saved</title></rect><rect class="saving" x="495.3" y="90.1" width="20.6" height="93.9"><title>Image 0866: 4.37% saved</title></rect><rect class="saving" x="523.9" y="89.8" width="20.6" height="94.2"><title>Image 0877: 4.38% saved</title></rect><rect class="saving" x="552.5" y="85.3" width="20.6" height="98.7"><title>Image 0878: 4.59% saved</title></rect><rect class="saving" x="581.1" y="81.1" width="20.6" height="102.9"><title>Image 0881: 4.78% saved</title></rect><rect class="saving" x="609.7" y="68.0" width="20.6" height="116.0"><title>Image 0869: 5.40% saved</title></rect><rect class="saving" x="638.3" y="42.6" width="20.6" height="141.4"><title>Image 0880: 6.58% saved</title></rect><rect class="saving" x="666.8" y="35.7" width="20.6" height="148.3"><title>Image 0884: 6.90% saved</title></rect><rect class="saving" x="695.4" y="22.3" width="20.6" height="161.7"><title>Image 0887: 7.52% saved</title></rect><text class="tick" x="34" y="204">Each bar is one photo, smallest saving first</text></svg>
+
+    <h3>Three separate tests agree</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th scope="col">Test set (24 photos each)</th><th scope="col">JPEG XL e10 larger by</th><th scope="col">Truepix wins</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">DIV2K 0801 to 0824</th><td>4.28%</td><td>23 of 24</td></tr>
+          <tr><th scope="row">DIV2K 0841 to 0864</th><td>4.29%</td><td>24 of 24</td></tr>
+          <tr class="ours"><th scope="row">DIV2K 0865 to 0888, final build</th><td>3.62%</td><td>24 of 24</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Only the last row used the final build. The first two ran on earlier versions.</p>
+  </section>
+
+  <section id="speed">
+    <h2>Decoding takes about 141 times longer than JPEG XL</h2>
+    <p>Truepix does all of its modelling again to decode, so opening a photo takes seconds. That rules out web pages and suits archives, where a file is written once and rarely read.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th scope="col">Mean per image, 5 photos</th><th scope="col">Encode (s)</th><th scope="col">Decode (s)</th><th scope="col">Total size</th></tr></thead>
+        <tbody>
+<tr class="ours"><th scope="row">Truepix</th><td>17.2</td><td>10.59</td><td>+0.00%</td></tr>
+<tr><th scope="row">JPEG XL, effort 10</th><td>42.0</td><td>0.08</td><td>+3.71%</td></tr>
+<tr><th scope="row">JPEG XL, effort 9</th><td>1.8</td><td>0.08</td><td>+6.17%</td></tr>
+<tr><th scope="row">FLIF</th><td>14.3</td><td>0.95</td><td>+10.62%</td></tr>
+<tr><th scope="row">WebP lossless</th><td>10.0</td><td>0.07</td><td>+20.27%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Measured on a Ryzen 7 5800HS with 8 cores. Other work may have shared the machine for part of the run. Size is relative to Truepix on the same five photos.</p>
+  </section>
+
+  <section id="how">
+    <h2>How a pixel gets coded</h2>
+    <p>Truepix works through each sample in order, and the decoder repeats the same steps to stay in step with it.</p>
+    <ol class="steps">
+      <li><strong>Predict</strong><span>Four least-squares predictors and eleven simple ones guess the next value, and an adaptive blend combines them.</span></li>
+      <li><strong>Correct</strong><span>Bias cancelling removes the errors the blend keeps making in similar places.</span></li>
+      <li><strong>Model</strong><span>21 contexts estimate each bit, including exact colour differences that can learn a colour grid with no formula.</span></li>
+      <li><strong>Mix</strong><span>Five small neural mixers and a final one weigh those estimates, then two adaptive maps refine the result.</span></li>
+      <li><strong>Code</strong><span>A 32-bit binary arithmetic coder turns the final probabilities into bytes.</span></li>
+    </ol>
+
+    <h3>What the Kodak benchmark was hiding</h3>
+    <p>A slow general compressor, paq8px, beat image codecs by a surprising margin on the famous Kodak test set. About 90% of that gap was colour. Kodak's images came from Photo CD, so their RGB values sit on a stretched integer grid. Only 12.8% of all RGB colours can occur on it, and those colours hold 87.3% of Kodak's pixels.</p>
+    <div class="compare">
+      <figure>
+        <div class="lattice kodak" role="img" aria-label="A regular diagonal grid of squares."></div>
+        <figcaption>Kodak: colour differences fall on a grid.</figcaption>
+      </figure>
+      <figure>
+        <div class="lattice ordinary" role="img" aria-label="An even, unstructured spread of squares."></div>
+        <figcaption>An ordinary photo: no grid.</figcaption>
+      </figure>
+    </div>
+    <p style="margin-top:20px">Exact-difference contexts turned that finding into a gain for ordinary images too. On Kodak itself, Truepix reaches 5.723 bits per pixel. It was tuned on those images, so that isn't a fair score.</p>
+
+    <h3>The same file on every build</h3>
+    <p>Encoder and decoder must agree on every bit of floating-point maths. Files were byte-identical across seven builds using GCC, Clang, 32-bit x86 and WebAssembly, and all 245 cross-build decodes came back exact.</p>
+  </section>
+
+  <section id="limits">
+    <h2>What it doesn't do</h2>
+    <ul class="limits">
+      <li><strong>paq8px still compresses further.</strong> On the tuning crops it was about 5% smaller on green and 7% smaller on colour, and it is far slower.</li>
+      <li><strong>Pixels only.</strong> Colour profiles and other metadata are not stored.</li>
+      <li><strong>8-bit images only.</strong> Grey or RGB, with or without alpha. Anything else is refused.</li>
+      <li><strong>ARM is untested.</strong> It compiles for ARM64 but has never been run there.</li>
+      <li><strong>Nobody else has checked this yet.</strong> The results have not been independently replicated.</li>
+      <li><strong>The file format may change.</strong> Keep your originals for now.</li>
+    </ul>
+  </section>
+
+  <section id="use">
+    <h2>Use it</h2>
+    <p>Truepix is a C++ codec with a small Python command-line tool. The source isn't public yet.</p>
+<pre><code>g++ -std=c++17 -O3 -mavx2 -ffp-contract=off -static truepix-core.cpp -o truepix-core.exe
+
+uv run truepix compress photo.png --verify   # writes photo.tpix
+uv run truepix decompress photo.tpix         # writes photo.png</code></pre>
+    <p>The full method, every result and its limits are in <a href="paper.pdf">the paper (PDF)</a>.</p>
+  </section>
+</div>
+
+<div class="wrap">
+  <footer>Truepix, 2026. The numbers here come from the results behind the paper.</footer>
+</div>
+</body>
+</html>
