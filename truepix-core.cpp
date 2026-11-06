@@ -35,6 +35,10 @@
 #include <immintrin.h>
 #endif
 
+#ifdef TRUEPIX_WASM
+__attribute__((import_module("env"), import_name("tp_tick"))) void tp_tick(int samples);
+#endif
+
 static const char MAGIC[] = "TPX1";
 static const int PCD_OR = -255504, PCD_OG = 199153, PCD_OB = -354277;
 
@@ -806,6 +810,9 @@ static void run(Model& m, Coder& coder, const Image* src, const int order[4]) {
                 for (int i = 0; i < NRAW; i++) bw[i] += gain * d[i];
                 for (int i = 0; i < NPARAM; i++) scale[i] += (std::abs((float)value - par.mu[i]) - scale[i]) * 0.008f;
                 done++;
+#ifdef TRUEPIX_WASM
+                if ((done & 0x3fff) == 0) tp_tick(0x4000);
+#endif
                 m.lr_scale = std::max(0.0, 1.0 - (double)done / std::min(total, 400000));
             }
             if (x == w - 1)
@@ -1112,45 +1119,114 @@ static void tile_box(int w, int h, int side, int t, int& x0, int& y0, int& x1, i
     y1 = (int)((long long)h * (j + 1) / side);
 }
 
+// Packs an image into a complete Truepix file.
+static std::vector<u8> pack(const Image& im, int side, std::vector<int>& modes) {
+    if (im.w < side * 16 || im.h < side * 16) side = 1;
+    int count = side * side;
+    std::vector<std::vector<u8>> parts(count);
+    modes.assign(count, 0);
+    run_tiles(count, [&](int t) {
+            int x0, y0, x1, y1;
+            tile_box(im.w, im.h, side, t, x0, y0, x1, y1);
+            Image tile;
+            tile.w = x1 - x0;
+            tile.h = y1 - y0;
+            tile.c = im.c;
+            tile.data.resize((size_t)tile.w * tile.h * tile.c);
+            for (int y = y0; y < y1; y++)
+                memcpy(&tile.data[(size_t)(y - y0) * tile.w * tile.c], &im.data[((size_t)y * im.w + x0) * im.c], (size_t)tile.w * tile.c);
+            parts[t] = compress(tile, modes[t]);
+        });
+    std::vector<u8> head;
+    auto put32 = [&](u32 v) { for (int i = 0; i < 4; i++) head.push_back((u8)(v >> (8 * i))); };
+    for (const char* m = MAGIC; *m; m++) head.push_back((u8)*m);
+    put32(im.w);
+    put32(im.h);
+    head.push_back((u8)im.c);
+    head.push_back((u8)side);
+    put32(crc32_of(im.data));
+    for (auto& part : parts) put32((u32)part.size());
+    for (auto& part : parts) head.insert(head.end(), part.begin(), part.end());
+    return head;
+}
+
+// Unpacks a complete Truepix file, or returns the reason it could not.
+static const char* unpack(const std::vector<u8>& b, Image& im) {
+    const size_t HEAD = 18;
+    if (b.size() < HEAD || memcmp(b.data(), MAGIC, 4)) return "not a Truepix file of this version";
+    im.w = (int)get32(b.data() + 4);
+    im.h = (int)get32(b.data() + 8);
+    im.c = b[12];
+    int side = b[13], count = side * side;
+    u32 expected = get32(b.data() + 14);
+    if (im.w < 1 || im.h < 1 || im.c < 1 || im.c > 4 || side < 1 || side > 16 || b.size() < HEAD + (size_t)count * 4) return "damaged Truepix header";
+    im.data.resize((size_t)im.w * im.h * im.c);
+    std::vector<size_t> start(count + 1);
+    start[0] = HEAD + (size_t)count * 4;
+    for (int t = 0; t < count; t++) start[t + 1] = start[t] + get32(b.data() + HEAD + (size_t)t * 4);
+    if (start[count] != b.size()) return "damaged Truepix file";
+    if (im.w < side || im.h < side) return "damaged Truepix header";
+    for (int t = 0; t < count; t++) {
+        int x0, y0, x1, y1;
+        tile_box(im.w, im.h, side, t, x0, y0, x1, y1);
+        if (!tile_valid(b.data() + start[t], start[t + 1] - start[t], x1 - x0, y1 - y0, im.c)) return "damaged Truepix file";
+    }
+    run_tiles(count, [&](int t) {
+            Image tile = expand(b.data() + start[t], start[t + 1] - start[t]);
+            int x0, y0, x1, y1;
+            tile_box(im.w, im.h, side, t, x0, y0, x1, y1);
+            for (int y = y0; y < y1; y++)
+                memcpy(&im.data[((size_t)y * im.w + x0) * im.c], &tile.data[(size_t)(y - y0) * tile.w * tile.c], (size_t)tile.w * tile.c);
+        });
+    // Never hand back an image that differs from what was encoded.
+    if (crc32_of(im.data) != expected) return "Truepix decode failed its checksum";
+    return nullptr;
+}
+
+// Tiling trades a little size for speed, and only pays on large images.
+static int default_side(const Image& im) { return (long long)im.w * im.h >= (1 << 20) ? 2 : 1; }
+
+#ifdef TRUEPIX_WASM
+// The browser build: no files, and results stay here until the page copies them out.
+static std::vector<u8> packed;
+static Image unpacked;
+
+extern "C" {
+__attribute__((export_name("tp_alloc"))) u8* tp_alloc(size_t size) { return (u8*)malloc(size); }
+__attribute__((export_name("tp_free"))) void tp_free(u8* p) { free(p); }
+__attribute__((export_name("tp_compress"))) size_t tp_compress(const u8* pixels, int w, int h, int c) {
+    Image im;
+    im.w = w; im.h = h; im.c = c;
+    im.data.assign(pixels, pixels + (size_t)w * h * c);
+    std::vector<int> modes;
+    packed = pack(im, default_side(im), modes);
+    return packed.size();
+}
+__attribute__((export_name("tp_packed"))) const u8* tp_packed() { return packed.data(); }
+__attribute__((export_name("tp_decompress"))) int tp_decompress(const u8* file, size_t size) {
+    std::vector<u8> b(file, file + size);
+    unpacked = Image();
+    return unpack(b, unpacked) ? 1 : 0;
+}
+__attribute__((export_name("tp_pixels"))) const u8* tp_pixels() { return unpacked.data.data(); }
+__attribute__((export_name("tp_width"))) int tp_width() { return unpacked.w; }
+__attribute__((export_name("tp_height"))) int tp_height() { return unpacked.h; }
+__attribute__((export_name("tp_channels"))) int tp_channels() { return unpacked.c; }
+}
+#else
 int main(int argc, char** argv) {
     if (argc < 4 || argc > 5) { fprintf(stderr, "usage: truepix-core c|d input output [tiles per side]\n"); return 1; }
     if (argv[1][0] == 'c') {
         Image im = read_pnm(argv[2]);
-        // Tiling trades a little size for speed, and only pays on large images.
-        int side = argc == 5 ? atoi(argv[4]) : ((long long)im.w * im.h >= (1 << 20) ? 2 : 1);
+        int side = argc == 5 ? atoi(argv[4]) : default_side(im);
         if (side < 1 || side > 16) { fprintf(stderr, "tiles per side must be 1 to 16\n"); return 1; }
-        if (im.w < side * 16 || im.h < side * 16) side = 1;
-        int count = side * side;
-        std::vector<std::vector<u8>> parts(count);
-        std::vector<int> modes(count);
-        run_tiles(count, [&](int t) {
-                int x0, y0, x1, y1;
-                tile_box(im.w, im.h, side, t, x0, y0, x1, y1);
-                Image tile;
-                tile.w = x1 - x0;
-                tile.h = y1 - y0;
-                tile.c = im.c;
-                tile.data.resize((size_t)tile.w * tile.h * tile.c);
-                for (int y = y0; y < y1; y++)
-                    memcpy(&tile.data[(size_t)(y - y0) * tile.w * tile.c], &im.data[((size_t)y * im.w + x0) * im.c], (size_t)tile.w * tile.c);
-                parts[t] = compress(tile, modes[t]);
-            });
+        std::vector<int> modes;
+        std::vector<u8> file = pack(im, side, modes);
         FILE* f = fopen(argv[3], "wb");
-        std::vector<u8> head;
-        auto put32 = [&](u32 v) { for (int i = 0; i < 4; i++) head.push_back((u8)(v >> (8 * i))); };
-        for (const char* m = MAGIC; *m; m++) head.push_back((u8)*m);
-        put32(im.w);
-        put32(im.h);
-        head.push_back((u8)im.c);
-        head.push_back((u8)side);
-        put32(crc32_of(im.data));
-        for (auto& part : parts) put32((u32)part.size());
-        fwrite(head.data(), 1, head.size(), f);
-        size_t total = head.size();
-        for (auto& part : parts) { fwrite(part.data(), 1, part.size(), f); total += part.size(); }
+        fwrite(file.data(), 1, file.size(), f);
         fclose(f);
-        printf("%zu mode", total);
-        for (int t = 0; t < count; t++) printf("%s%d", t ? "," : " ", modes[t]);
+        printf("%zu mode", file.size());
+        for (size_t t = 0; t < modes.size(); t++) printf("%s%d", t ? "," : " ", modes[t]);
         printf("\n");
     } else {
         FILE* f = fopen(argv[2], "rb");
@@ -1159,42 +1235,10 @@ int main(int argc, char** argv) {
         size_t n;
         while ((n = fread(chunk, 1, sizeof chunk, f)) > 0) b.insert(b.end(), chunk, chunk + n);
         fclose(f);
-        const size_t HEAD = 18;
-        if (b.size() < HEAD || memcmp(b.data(), MAGIC, 4)) { fprintf(stderr, "not a Truepix file of this version\n"); return 2; }
         Image im;
-        im.w = (int)get32(b.data() + 4);
-        im.h = (int)get32(b.data() + 8);
-        im.c = b[12];
-        int side = b[13], count = side * side;
-        u32 expected = get32(b.data() + 14);
-        if (im.w < 1 || im.h < 1 || im.c < 1 || im.c > 4 || side < 1 || side > 16 || b.size() < HEAD + (size_t)count * 4) {
-            fprintf(stderr, "damaged Truepix header\n");
-            return 2;
-        }
-        im.data.resize((size_t)im.w * im.h * im.c);
-        std::vector<size_t> start(count + 1);
-        start[0] = HEAD + (size_t)count * 4;
-        for (int t = 0; t < count; t++) start[t + 1] = start[t] + get32(b.data() + HEAD + (size_t)t * 4);
-        if (start[count] != b.size()) { fprintf(stderr, "damaged Truepix file\n"); return 2; }
-        if (im.w < side || im.h < side) { fprintf(stderr, "damaged Truepix header\n"); return 2; }
-        for (int t = 0; t < count; t++) {
-            int x0, y0, x1, y1;
-            tile_box(im.w, im.h, side, t, x0, y0, x1, y1);
-            if (!tile_valid(b.data() + start[t], start[t + 1] - start[t], x1 - x0, y1 - y0, im.c)) {
-                fprintf(stderr, "damaged Truepix file\n");
-                return 2;
-            }
-        }
-        run_tiles(count, [&](int t) {
-                Image tile = expand(b.data() + start[t], start[t + 1] - start[t]);
-                int x0, y0, x1, y1;
-                tile_box(im.w, im.h, side, t, x0, y0, x1, y1);
-                for (int y = y0; y < y1; y++)
-                    memcpy(&im.data[((size_t)y * im.w + x0) * im.c], &tile.data[(size_t)(y - y0) * tile.w * tile.c], (size_t)tile.w * tile.c);
-            });
-        // Never hand back an image that differs from what was encoded.
-        if (crc32_of(im.data) != expected) { fprintf(stderr, "Truepix decode failed its checksum\n"); return 3; }
+        if (const char* problem = unpack(b, im)) { fprintf(stderr, "%s\n", problem); return 2; }
         write_pnm(argv[3], im);
     }
     return 0;
 }
+#endif

@@ -31,6 +31,17 @@ On Linux or macOS, build without `-static` and with `-pthread`, and name the fil
 `-ffp-contract=off`: without it, files may not decode on other builds. Set `TRUEPIX_CORE` to use
 a codec stored somewhere else.
 
+## Browser build
+
+The website runs the real codec on the visitor's device. To rebuild `site/truepix.wasm`, use
+Clang through Zig. The files it writes match the native build's.
+
+```
+python -m ziglang c++ -std=c++17 -O3 -msimd128 -ffp-contract=off -fno-exceptions -DTRUEPIX_SERIAL \
+  -DTRUEPIX_WASM -mexec-model=reactor -target wasm32-wasi -Wl,--max-memory=2147483648 -s \
+  truepix-core.cpp -o site/truepix.wasm
+```
+
 ## Limits
 
 - **Speed:** a 3-megapixel photo takes about 12 seconds to encode and 7 to decode on an 8-core

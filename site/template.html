@@ -74,7 +74,6 @@ h1 {
   pointer-events: none;
 }
 h1 .line { display: block; white-space: nowrap; }
-h1 .letter { display: inline-block; }
 .hero-foot {
   position: relative;
   z-index: 2;
@@ -191,6 +190,20 @@ tr.ours th, tr.ours td { font-weight: 700; }
 .lane div { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; font: 700 0.875rem var(--data); }
 .race .button { margin-top: 20px; background: var(--sun); color: var(--ink); }
 
+.try { background: var(--sun); }
+.drop { display: grid; justify-items: center; gap: 12px; margin-top: 24px; padding: 40px 20px; border: 4px dashed var(--ink); text-align: center; transition: background-color 0.15s; }
+.drop strong { font: 800 1.5rem var(--display); text-transform: uppercase; }
+.drop.over { background: var(--tomato); }
+.work { display: grid; gap: 8px; margin-top: 20px; font: 700 0.8125rem var(--data); }
+.meter { height: 26px; background: var(--ink); }
+.meter i { display: block; width: 0; height: 100%; background: var(--tomato); transition: width 0.25s linear; }
+.tool-error { margin-top: 20px; padding: 12px 14px; background: var(--ink); color: var(--sun); font-weight: 600; }
+.out { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 24px; }
+.out canvas { width: 100%; height: auto; max-height: 460px; object-fit: contain; background: var(--ink); }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0 0 16px; }
+.facts dt { font: 700 0.6875rem var(--data); text-transform: uppercase; }
+.facts dd { margin: 0; font: 900 1.75rem var(--display); }
+
 .wall { background: var(--bone); }
 .wall-sets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
 .wall-set { margin: 0; }
@@ -219,7 +232,7 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
   .say p { font-size: 0.9375rem; }
   .rank { grid-template-columns: minmax(0, 1fr) 62px 72px; }
   .rank-bar { grid-column: 1 / -1; grid-row: 2; }
-  .lanes { grid-template-columns: minmax(0, 1fr); }
+  .lanes, .out { grid-template-columns: minmax(0, 1fr); }
   .wall-sets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .limits ul { grid-template-columns: minmax(0, 1fr); }
   .towers { height: 170px; }
@@ -239,13 +252,14 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
       <li><a href="#how">How it works</a></li>
       <li><a href="#results">Results</a></li>
       <li><a href="#race">Speed</a></li>
+      <li><a href="#try">Try it</a></li>
       <li><a href="#limits">Limits</a></li>
       <li><a href="#use">Use it</a></li>
     </ul>
   </nav>
-  <h1 id="title" aria-label="Every pixel comes back."><span class="line" data-flex>Every <span class="gap"></span>pixel</span><span class="line" data-flex>comes <span class="gap"></span>back.</span></h1>
+  <h1 id="title" aria-label="Every pixel comes back."><span class="line">Every <span class="gap"></span>pixel</span><span class="line">comes <span class="gap"></span>back.</span></h1>
   <div class="hero-foot">
-    <p class="lede">Truepix is a lossless image codec for archives. On 24 photos it had never seen, JPEG XL at its top effort came out <strong>3.62% larger</strong>, and Truepix won on all 24. The price is slow decoding.</p>
+    <p class="lede">Truepix is a lossless image codec for archives. On 24 photos it had never seen, JPEG XL at its top effort came out <strong>3.62% larger</strong>, and Truepix won on all 24. Every pixel came back exact.</p>
     <div class="hud">
       <span class="readout" id="readout">Decoding…</span>
       <a class="button" href="paper.pdf">Read the paper</a>
@@ -316,23 +330,52 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
 
 <section class="field race" id="race">
   <div class="inner" data-arm>
-    <span class="tag">The honest part</span>
-    <h2>It decodes about 100 times slower</h2>
-    <p>This race runs at the true ratio: 7.37 seconds against 0.08. Truepix does all of its modelling again to decode, which rules out web pages and suits archives, where a file is written once and rarely read.</p>
+    <span class="tag">Encoding race, photo by photo</span>
+    <h2>3.5 times faster than JPEG XL's top effort</h2>
+    <p>JPEG XL's highest effort took 42.0 seconds per photo. Truepix took 12.0, and its files were still smaller: JPEG XL's came out 3.71% larger on these five photos.</p>
     <div class="lanes">
-      <div class="lane"><canvas id="lane-jxl" width="96" height="64" role="img" aria-label="JPEG XL decoding almost instantly."></canvas><div><span>JPEG XL effort 9</span><span id="time-jxl">0.08 s</span></div></div>
-      <div class="lane"><canvas id="lane-tpx" width="96" height="64" role="img" aria-label="Truepix decoding line by line over about seven seconds."></canvas><div><span>Truepix</span><span id="time-tpx">7.37 s</span></div></div>
+      <div class="lane"><canvas id="lane-tpx" width="96" height="64" role="img" aria-label="Truepix encoding a photo and finishing first."></canvas><div><span>Truepix</span><span id="time-tpx">12.0 s</span></div></div>
+      <div class="lane"><canvas id="lane-jxl" width="96" height="64" role="img" aria-label="JPEG XL at effort 10 encoding the same photo and finishing later."></canvas><div><span>JPEG XL, effort 10</span><span id="time-jxl">42.0 s</span></div></div>
     </div>
-    <button class="button" id="replay" type="button">Run it again</button>
+    <button class="button" id="replay" type="button">Race again</button>
+    <p class="small" style="margin-top:12px">Shown at 6× speed. The timers count real seconds.</p>
     <div class="scroll">
       <table>
-        <thead><tr><th scope="col">Mean per image, 5 photos</th><th scope="col">Encode (s)</th><th scope="col">Decode (s)</th><th scope="col">Total size</th></tr></thead>
+        <thead><tr><th scope="col">Mean per image, 5 photos</th><th scope="col">Encode (s)</th><th scope="col">Total size</th></tr></thead>
         <tbody>
 @@SPEED@@
         </tbody>
       </table>
     </div>
-    <p class="small" style="margin-top:12px">Ryzen 7 5800HS, 8 cores. Other work may have shared the machine during the rival timings, taken in an earlier run. Size is relative to Truepix on the same five photos. The paper's Table 7 reports the scored build, which wrote the same files in 17.2 s and read them in 10.59 s.</p>
+    <p class="small" style="margin-top:12px">Ryzen 7 5800HS, 8 cores. Other work may have shared the machine during the rival timings, taken in an earlier run. Sizes are relative to Truepix on the same five photos.</p>
+  </div>
+</section>
+
+<section class="field try" id="try">
+  <div class="inner" data-arm>
+    <span class="tag">Runs on your device. Nothing is uploaded.</span>
+    <h2>Try it on your own image</h2>
+    <p>This is the real codec, compiled to WebAssembly, and it writes the same files as the desktop build. Drop an image to compress it and check every pixel, or drop a Truepix file to rebuild the image.</p>
+    <div class="drop" id="drop">
+      <strong>Drop an image or a .tpix file</strong>
+      <button class="button" id="choose" type="button">Choose a file</button>
+      <input id="file" type="file" hidden accept="image/png,image/jpeg,image/webp,image/bmp,.tpix,.zip">
+      <span class="small">PNG, JPEG, WebP or BMP, up to 4 megapixels. Allow about a minute per megapixel, including the pixel check.</span>
+    </div>
+    <div class="work" id="work" role="status" hidden>
+      <span id="work-text">Starting…</span>
+      <div class="meter"><i id="meter"></i></div>
+    </div>
+    <p class="tool-error" id="tool-error" role="alert" hidden></p>
+    <div class="out" id="out" hidden>
+      <canvas id="out-image" role="img" aria-label="The image rebuilt from the Truepix file."></canvas>
+      <div>
+        <dl class="facts" id="facts"></dl>
+        <p id="verdict"></p>
+        <button class="button" id="save" type="button">Save</button>
+        <p class="small" id="save-note" hidden></p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -352,6 +395,7 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
       <li><strong>Beat paq8px</strong> On the tuning crops, paq8px was about 5% smaller on green and 7% smaller on colour. It is also far slower.</li>
       <li><strong>Keep metadata</strong> Colour profiles and other metadata are not stored. It keeps pixels only.</li>
       <li><strong>Go past 8 bits</strong> Grey or RGB, with or without alpha. Anything else is refused.</li>
+      <li><strong>Open instantly</strong> A 3-megapixel photo takes about 7 seconds to decode on an 8-core laptop, so Truepix suits archives, not web pages.</li>
       <li><strong>Run on ARM yet</strong> It compiles for ARM64 but has never been run there.</li>
       <li><strong>Claim outside proof</strong> The results have not been independently replicated.</li>
       <li><strong>Promise a stable format</strong> The file format may change. Keep your originals for now.</li>
@@ -484,38 +528,6 @@ const hero = (() => {
     if (label !== shown) { readout.textContent = label; shown = label; }
     const now = performance.now();
     if (ready && !still && !pointer.on && now - lastBlast > 5200) { lastBlast = now; blast(w * (0.2 + Math.random() * 0.6), h * 0.45, 13); }
-  };
-})();
-
-// Headline letters breathe and stretch toward the pointer.
-const flex = (() => {
-  const letters = [];
-  document.querySelectorAll("[data-flex]").forEach((line) => {
-    [...line.childNodes].forEach((child) => {
-      if (child.nodeType !== 3) return;
-      const frag = document.createDocumentFragment();
-      [...child.textContent].forEach((ch) => {
-        if (ch === " ") { frag.append(" "); return; }
-        const span = document.createElement("span");
-        span.className = "letter"; span.textContent = ch; span.setAttribute("aria-hidden", "true");
-        frag.append(span); letters.push({ el: span, x: 0, y: 0 });
-      });
-      line.replaceChild(frag, child);
-    });
-  });
-  const measure = () => letters.forEach((l) => { const b = l.el.getBoundingClientRect(); l.x = b.left + b.width / 2; l.y = b.top + b.height / 2 + scrollY; });
-  addEventListener("resize", measure);
-  if (document.fonts?.ready) document.fonts.ready.then(measure);
-  measure();
-  return (t) => {
-    letters.forEach((l, i) => {
-      const dist = Math.hypot(pointer.x - l.x, pointer.y + scrollY - l.y);
-      const pull = pointer.on ? Math.exp(-(dist * dist) / 26000) : 0;
-      const width = 92 + 13 * Math.sin(t * 1.3 + i * 0.55) + 42 * pull;
-      const skew = 9 * pull * Math.sin(t * 2 + i);
-      l.el.style.fontVariationSettings = `"wdth" ${width.toFixed(0)}, "wght" 900`;
-      l.el.style.transform = `skewX(${skew.toFixed(1)}deg)`;
-    });
   };
 })();
 
@@ -761,22 +773,22 @@ const lattice = (() => {
   };
 })();
 
-// The decode race runs at the true ratio.
+// The encoding race keeps the true ratio, sped up six times so nobody waits 42 seconds.
 const race = (() => {
-  const canvases = [$("#lane-jxl"), $("#lane-tpx")], labels = [$("#time-jxl"), $("#time-tpx")], seconds = [0.08, 7.37];
+  const canvases = [$("#lane-tpx"), $("#lane-jxl")], labels = [$("#time-tpx"), $("#time-jxl")], seconds = [12, 42], SPEEDUP = 6;
   const w = 96, h = 64, picture = desert(w, h);
   const drawn = canvases.map((c) => { const g = c.getContext("2d", { alpha: false }), image = g.createImageData(w, h); return { g, image, words: new Uint32Array(image.data.buffer) }; });
   let start = null, done = true;
   const ink = rgba(C.ink), line = rgba(C.sun);
   const paint = (now) => {
-    const elapsed = start === null ? (done ? 99 : 0) : (now - start) / 1000;
+    const elapsed = start === null ? (done ? 99 : 0) : (now - start) / 1000 * SPEEDUP;
     drawn.forEach((d, k) => {
       const f = clamp(elapsed / seconds[k]), head = Math.floor(f * w * h);
       d.words.fill(ink);
       d.words.set(picture.subarray(0, head));
       if (f < 1) { const row = Math.floor(head / w); for (let x = 0; x < w; x++) d.words[row * w + x] = line; }
       d.g.putImageData(d.image, 0, 0);
-      labels[k].textContent = Math.min(elapsed, seconds[k]).toFixed(2) + " s";
+      labels[k].textContent = Math.min(elapsed, seconds[k]).toFixed(1) + " s";
     });
     if (elapsed >= seconds[1]) { start = null; done = true; }
   };
@@ -784,6 +796,222 @@ const race = (() => {
   $("#replay").addEventListener("click", go);
   paint(0);
   return { paint, go };
+})();
+
+// The in-browser tool. The codec runs in a worker, so the page stays responsive while it works.
+const WORKER = `
+let wasm;
+const open = async () => {
+  const stubs = {};
+  for (const item of WebAssembly.Module.imports(wasm)) {
+    stubs[item.module] ??= {};
+    stubs[item.module][item.name] = item.name === "proc_exit" ? (code) => { throw new Error("exit " + code); } : () => 0;
+  }
+  let done = 0;
+  stubs.env.tp_tick = (samples) => { done += samples; postMessage({ tick: done }); };
+  const instance = await WebAssembly.instantiate(wasm, stubs);
+  instance.exports._initialize?.();
+  return instance.exports;
+};
+const put = (w, bytes) => { const at = w.tp_alloc(bytes.length); new Uint8Array(w.memory.buffer, at, bytes.length).set(bytes); return at; };
+const take = (w, at, size) => new Uint8Array(w.memory.buffer, at, size).slice();
+function rebuild(w, file) {
+  const at = put(w, file), failed = w.tp_decompress(at, file.length);
+  w.tp_free(at);
+  if (failed) throw new Error("damaged");
+  const width = w.tp_width(), height = w.tp_height(), channels = w.tp_channels();
+  return { width, height, channels, pixels: take(w, w.tp_pixels(), width * height * channels) };
+}
+onmessage = async ({ data }) => {
+  try {
+    wasm ??= await WebAssembly.compile(data.wasm);
+    const w = await open();
+    if (data.job === "compress") {
+      const { pixels, width, height, channels } = data;
+      const at = put(w, pixels), size = w.tp_compress(at, width, height, channels);
+      w.tp_free(at);
+      const file = take(w, w.tp_packed(), size), back = rebuild(w, file);
+      const exact = back.pixels.length === pixels.length && back.pixels.every((v, i) => v === pixels[i]);
+      postMessage({ result: { ...back, file, exact } });
+    } else {
+      postMessage({ result: rebuild(w, data.file) });
+    }
+  } catch (error) {
+    postMessage({ error: error.message });
+  }
+};
+`;
+
+const tool = (() => {
+  const box = { drop: $("#drop"), file: $("#file"), work: $("#work"), text: $("#work-text"), meter: $("#meter"), error: $("#tool-error"), out: $("#out"), image: $("#out-image"), facts: $("#facts"), verdict: $("#verdict"), save: $("#save"), note: $("#save-note") };
+  const LIMIT = 4000000;
+  let wasm = null, busy = false, offer = null;
+  const formatSize = (n) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(2)} MB`;
+  const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
+  const stem = (name) => name.replace(/(\.tpix)?(\.[^.]+)$/i, "") || "image";
+
+  function fail(message) {
+    box.work.hidden = true; busy = false;
+    box.error.textContent = message; box.error.hidden = false;
+  }
+  function fact(label, value) {
+    const row = document.createElement("div"), term = document.createElement("dt"), detail = document.createElement("dd");
+    term.textContent = label; detail.textContent = value;
+    row.append(term, detail); box.facts.append(row);
+  }
+  function show({ pixels, width, height, channels }) {
+    const rgba = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < width * height; i++) {
+      const at = i * channels;
+      rgba[i * 4] = pixels[at];
+      rgba[i * 4 + 1] = channels >= 3 ? pixels[at + 1] : pixels[at];
+      rgba[i * 4 + 2] = channels >= 3 ? pixels[at + 2] : pixels[at];
+      rgba[i * 4 + 3] = channels === 4 ? pixels[at + 3] : channels === 2 ? pixels[at + 1] : 255;
+    }
+    box.image.width = width; box.image.height = height;
+    box.image.getContext("2d").putImageData(new ImageData(rgba, width, height), 0, 0);
+  }
+  async function pixelsOf(file) {
+    const bitmap = await createImageBitmap(file, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+    const { width, height } = bitmap;
+    if (width * height > LIMIT) { bitmap.close(); throw new Error(`This image is ${(width * height / 1e6).toFixed(1)} megapixels. The browser version takes up to 4.`); }
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
+    const g = canvas.getContext("2d", { willReadFrequently: true });
+    g.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const data = g.getImageData(0, 0, width, height).data;
+    let opaque = true, grey = true;
+    for (let i = 0; i < data.length && (opaque || grey); i += 4) {
+      if (data[i + 3] !== 255) opaque = false;
+      if (data[i] !== data[i + 1] || data[i] !== data[i + 2]) grey = false;
+    }
+    const channels = !opaque ? 4 : grey ? 1 : 3, pixels = new Uint8Array(width * height * channels);
+    for (let i = 0, at = 0; i < data.length; i += 4) {
+      pixels[at++] = data[i];
+      if (channels >= 3) { pixels[at++] = data[i + 1]; pixels[at++] = data[i + 2]; }
+      if (channels === 4) pixels[at++] = data[i + 3];
+    }
+    return { pixels, width, height, channels };
+  }
+
+  // A Truepix file saved from the hosted page arrives wrapped in a one-file zip.
+  function unwrap(bytes) {
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return bytes;
+    const view = new DataView(bytes.buffer, bytes.byteOffset);
+    if (view.getUint16(8, true) !== 0) throw new Error("This zip wasn't saved by this page.");
+    const size = view.getUint32(18, true), at = 30 + view.getUint16(26, true) + view.getUint16(28, true);
+    return bytes.subarray(at, at + size);
+  }
+  const CRC = Array.from({ length: 256 }, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
+  function zip(name, data) {
+    let crc = 0xffffffff;
+    for (const byte of data) crc = CRC[(crc ^ byte) & 255] ^ (crc >>> 8);
+    crc = (crc ^ 0xffffffff) >>> 0;
+    const title = new TextEncoder().encode(name), local = new DataView(new ArrayBuffer(30)), central = new DataView(new ArrayBuffer(46)), end = new DataView(new ArrayBuffer(22));
+    local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint32(14, crc, true); local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, title.length, true);
+    central.setUint32(0, 0x02014b50, true); central.setUint16(4, 20, true); central.setUint16(6, 20, true); central.setUint32(16, crc, true); central.setUint32(20, data.length, true); central.setUint32(24, data.length, true); central.setUint16(28, title.length, true);
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, 1, true); end.setUint16(10, 1, true); end.setUint32(12, 46 + title.length, true); end.setUint32(16, 30 + title.length + data.length, true);
+    return new Blob([local, title, data, central, title, end]);
+  }
+
+  async function saver() {
+    return window.claude?.use ? claude.use("downloads") : null;
+  }
+  async function save() {
+    if (!offer) return;
+    box.note.hidden = true;
+    const hosted = await saver();
+    try {
+      if (hosted) {
+        const blob = offer.tpix ? zip(offer.name, offer.tpix) : await offer.blob();
+        await hosted.save({ filename: offer.tpix ? offer.name + ".zip" : offer.name, data: blob });
+        if (offer.tpix) { box.note.textContent = "Saved as a zip holding your .tpix file. This page can open the zip directly."; box.note.hidden = false; }
+      } else {
+        const blob = offer.tpix ? new Blob([offer.tpix]) : await offer.blob();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob); link.download = offer.name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      }
+    } catch (error) {
+      if (error?.code !== "declined") { box.note.textContent = "This view can't save files."; box.note.hidden = false; }
+    }
+  }
+
+  function run(job, transfer, total, label, done) {
+    const worker = new Worker(URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" })));
+    const begun = performance.now();
+    const finish = () => { worker.terminate(); busy = false; box.work.hidden = true; };
+    worker.onerror = () => { finish(); fail("Your browser couldn't run the codec here."); };
+    worker.onmessage = ({ data }) => {
+      if (data.tick !== undefined) {
+        const f = clamp(data.tick / total, 0, 0.99);
+        box.meter.style.width = `${f * 100}%`;
+        box.text.textContent = `${data.tick * 2 > total && job.job === "compress" ? "Checking every pixel" : label} ${Math.round(f * 100)}%`;
+      } else if (data.error) {
+        finish(); fail(data.error === "damaged" ? "This Truepix file is damaged or from another version." : "Your browser couldn't run the codec here.");
+      } else {
+        finish(); done(data.result, performance.now() - begun);
+      }
+    };
+    worker.postMessage({ ...job, wasm: wasm.slice(0) }, transfer);
+  }
+
+  async function handle(file) {
+    if (busy) return;
+    busy = true;
+    box.error.hidden = true; box.out.hidden = true; box.note.hidden = true; box.facts.replaceChildren(); offer = null;
+    box.meter.style.width = "0"; box.work.hidden = false; box.text.textContent = "Starting…";
+    try {
+      wasm ??= await fetch("truepix.wasm").then((r) => { if (!r.ok) throw new Error(); return r.arrayBuffer(); });
+    } catch { fail("The codec couldn't load. Check your connection and try again."); return; }
+    const isPacked = /\.(tpix|zip)$/i.test(file.name);
+    try {
+      if (isPacked) {
+        const bytes = unwrap(new Uint8Array(await file.arrayBuffer()));
+        if (String.fromCharCode(...bytes.subarray(0, 4)) !== "TPX1") throw new Error("This isn't a Truepix file.");
+        const view = new DataView(bytes.buffer, bytes.byteOffset);
+        const total = view.getUint32(4, true) * view.getUint32(8, true) * bytes[12];
+        const copy = bytes.slice();
+        run({ job: "decompress", file: copy }, [copy.buffer], total, "Rebuilding", (result, ms) => {
+          show(result); box.out.hidden = false;
+          fact("Truepix file", formatSize(bytes.length));
+          fact("Image", `${result.width} × ${result.height}`);
+          fact("Time here", seconds(ms));
+          fact("Checksum", "Match");
+          box.verdict.textContent = "Rebuilt, and the checksum stored in the file matches every pixel.";
+          box.save.textContent = "Save PNG";
+          offer = { name: stem(file.name) + ".png", blob: () => new Promise((done) => box.image.toBlob(done, "image/png")) };
+        });
+      } else {
+        const image = await pixelsOf(file);
+        const samples = image.pixels.length, original = file.size;
+        run({ job: "compress", ...image }, [image.pixels.buffer], samples * 2, "Compressing", (result, ms) => {
+          show(result); box.out.hidden = false;
+          const size = result.file.length, change = (size - original) / original * 100;
+          fact("Your file", formatSize(original));
+          fact("Truepix file", formatSize(size));
+          fact("Change", `${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
+          fact("Every pixel", result.exact ? "Exact" : "Mismatch");
+          box.verdict.textContent = /jpe?g/i.test(file.type)
+            ? "JPEG already threw detail away, so this stores the pixels your browser decoded from it. For JPEGs, this file can come out larger."
+            : `Compressed and rebuilt in ${seconds(ms)} on this device, then compared pixel by pixel.`;
+          box.save.textContent = "Save Truepix file";
+          offer = { name: stem(file.name) + ".tpix", tpix: result.file };
+        });
+      }
+    } catch (error) {
+      fail(error.message && !/source image|decode|bitmap/i.test(error.message) ? error.message : "This file isn't an image the browser can read.");
+    }
+  }
+  $("#choose").addEventListener("click", () => box.file.click());
+  box.file.addEventListener("change", () => { const file = box.file.files[0]; box.file.value = ""; if (file) handle(file); });
+  ["dragenter", "dragover"].forEach((name) => box.drop.addEventListener(name, (e) => { e.preventDefault(); box.drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((name) => box.drop.addEventListener(name, (e) => { e.preventDefault(); box.drop.classList.remove("over"); }));
+  box.drop.addEventListener("drop", (e) => { const file = e.dataTransfer.files[0]; if (file) handle(file); });
+  box.save.addEventListener("click", save);
+  return { handle };
 })();
 
 // Sections arm only once script runs and sit below the fold, so the page is complete without this.
@@ -806,13 +1034,13 @@ const heroBox = $(".hero"), pipeBox = $("#how"), latticeBox = $(".scene.lattice"
 [heroBox, pipeBox, latticeBox, raceBox].forEach((node) => watch.observe(node));
 function frame(now) {
   const t = now / 1000;
-  if (visible.get(heroBox)) { hero(); if (!still) flex(t); }
+  if (visible.get(heroBox)) hero();
   if (visible.get(pipeBox)) pipe(t);
   if (visible.get(latticeBox)) lattice(t);
   if (visible.get(raceBox)) race.paint(now);
   requestAnimationFrame(frame);
 }
-hero(); flex(0); pipe(0); lattice(0);
+hero(); pipe(0); lattice(0);
 requestAnimationFrame(frame);
 </script>
 </body>

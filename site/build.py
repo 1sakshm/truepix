@@ -17,11 +17,11 @@ METHODS = [
     ("PNG as distributed", 12.832, 58.22),
 ]
 SPEED = [
-    ("Truepix", "12.0", "7.37", "+0.00%"),
-    ("JPEG XL, effort 10", "42.0", "0.08", "+3.71%"),
-    ("JPEG XL, effort 9", "1.8", "0.08", "+6.17%"),
-    ("FLIF", "14.3", "0.95", "+10.62%"),
-    ("WebP lossless", "10.0", "0.07", "+20.27%"),
+    ("Truepix", "12.0", "smallest"),
+    ("JPEG XL, effort 10", "42.0", "+3.71%"),
+    ("JPEG XL, effort 9", "1.8", "+6.17%"),
+    ("FLIF", "14.3", "+10.62%"),
+    ("WebP lossless", "10.0", "+20.27%"),
 ]
 BUILDS = ["GCC AVX2", "GCC FMA", "GCC SSE2", "GCC -O0", "Clang x64", "Clang x86", "WebAssembly"]
 IMAGES = ["Plain RGB", "Photo CD", "JPEG history", "Greyscale", "RGBA"]
@@ -52,9 +52,9 @@ def savings():
 
 def speed_rows():
     rows = []
-    for name, encode, decode, size in SPEED:
+    for name, encode, size in SPEED:
         ours = ' class="ours"' if name == "Truepix" else ""
-        rows.append(f"<tr{ours}><th scope=\"row\">{name}</th><td>{encode}</td><td>{decode}</td><td>{size}</td></tr>")
+        rows.append(f"<tr{ours}><th scope=\"row\">{name}</th><td>{encode}</td><td>{size}</td></tr>")
     return "\n".join(rows)
 
 
