@@ -1055,6 +1055,12 @@ const tool = (() => {
     return error.message;
   }
 
+  function sampleImage() {
+    const width = 240, height = 160, picture = desert(width, height), pixels = new Uint8Array(width * height * 3);
+    picture.forEach((value, i) => { pixels[i * 3] = value & 255; pixels[i * 3 + 1] = value >> 8 & 255; pixels[i * 3 + 2] = value >> 16 & 255; });
+    return { pixels, width, height, channels: 3 };
+  }
+
   async function handle(file, given) {
     if (busy) return;
     busy = true;
