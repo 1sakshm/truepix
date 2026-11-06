@@ -194,6 +194,7 @@ tr.ours th, tr.ours td { font-weight: 700; }
 .drop { display: grid; justify-items: center; gap: 12px; margin-top: 24px; padding: 40px 20px; border: 4px dashed var(--ink); text-align: center; transition: background-color 0.15s; }
 .drop strong { font: 800 1.5rem var(--display); text-transform: uppercase; }
 .drop.over { background: var(--tomato); }
+.choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .work { display: grid; gap: 8px; margin-top: 20px; font: 700 0.8125rem var(--data); }
 .meter { height: 26px; background: var(--ink); }
 .meter i { display: block; width: 0; height: 100%; background: var(--tomato); transition: width 0.25s linear; }
@@ -367,7 +368,10 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
     <p>This is the real codec, compiled to WebAssembly, and it writes the same files as the desktop build. Drop an image to compress it and check every pixel, or drop a Truepix file to rebuild the image.</p>
     <div class="drop" id="drop">
       <strong>Drop an image or a .tpix file</strong>
-      <button class="button" id="choose" type="button">Choose a file</button>
+      <div class="choices">
+        <button class="button" id="choose" type="button">Choose a file</button>
+        <button class="button" id="sample" type="button">Try the sample image</button>
+      </div>
       <input id="file" type="file" hidden accept="image/png,image/jpeg,image/webp,image/bmp,.tpix,.zip">
       <span class="small">PNG, JPEG, WebP or BMP, up to 4 megapixels. Allow about a minute per megapixel, including the pixel check.</span>
     </div>
@@ -967,7 +971,13 @@ const tool = (() => {
     worker.postMessage({ ...job, wasm: wasm.slice(0) }, transfer);
   }
 
-  async function handle(file) {
+  function sampleImage() {
+    const width = 240, height = 160, picture = desert(width, height), pixels = new Uint8Array(width * height * 3);
+    picture.forEach((value, i) => { pixels[i * 3] = value & 255; pixels[i * 3 + 1] = value >> 8 & 255; pixels[i * 3 + 2] = value >> 16 & 255; });
+    return { pixels, width, height, channels: 3 };
+  }
+
+  async function handle(file, given) {
     if (busy) return;
     busy = true;
     box.error.hidden = true; box.out.hidden = true; box.note.hidden = true; box.facts.replaceChildren(); offer = null;
@@ -975,7 +985,7 @@ const tool = (() => {
     try {
       wasm ??= await fetch("truepix.wasm").then((r) => { if (!r.ok) throw new Error(); return r.arrayBuffer(); });
     } catch { fail("The codec couldn't load. Check your connection and try again."); return; }
-    const isPacked = /\.(tpix|zip)$/i.test(file.name);
+    const isPacked = !given && /\.(tpix|zip)$/i.test(file.name);
     try {
       if (isPacked) {
         const bytes = unwrap(new Uint8Array(await file.arrayBuffer()));
@@ -994,20 +1004,20 @@ const tool = (() => {
           offer = { name: stem(file.name) + ".png", blob: () => new Promise((done) => box.image.toBlob(done, "image/png")) };
         });
       } else {
-        const image = await pixelsOf(file);
-        const samples = image.pixels.length, original = file.size;
+        const image = given ?? await pixelsOf(file);
+        const samples = image.pixels.length, original = given ? samples : file.size;
         run({ job: "compress", ...image }, [image.pixels.buffer], samples * 2, "Compressing", (result, ms) => {
           show(result); box.out.hidden = false;
           const size = result.file.length, change = (size - original) / original * 100;
-          fact("Your file", formatSize(original));
+          fact(given ? "Raw pixels" : "Your file", formatSize(original));
           fact("Truepix file", formatSize(size));
           fact("Change", `${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
           fact("Every pixel", result.exact ? "Exact" : "Mismatch");
-          box.verdict.textContent = /jpe?g/i.test(file.type)
+          box.verdict.textContent = /jpe?g/i.test(file?.type ?? "")
             ? "JPEG already threw detail away, so this stores the pixels your browser decoded from it. For JPEGs, this file can come out larger."
             : `Compressed and rebuilt in ${seconds(ms)} on this device, then compared pixel by pixel.`;
           box.save.textContent = "Save Truepix file";
-          offer = { name: stem(file.name) + ".tpix", tpix: result.file };
+          offer = { name: (given ? "sample" : stem(file.name)) + ".tpix", tpix: result.file };
         });
       }
     } catch (error) {
@@ -1015,6 +1025,7 @@ const tool = (() => {
     }
   }
   $("#choose").addEventListener("click", () => box.file.click());
+  $("#sample").addEventListener("click", () => handle(null, sampleImage()));
   box.file.addEventListener("change", () => { const file = box.file.files[0]; box.file.value = ""; if (file) handle(file); });
   ["dragenter", "dragover"].forEach((name) => box.drop.addEventListener(name, (e) => { e.preventDefault(); box.drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach((name) => box.drop.addEventListener(name, (e) => { e.preventDefault(); box.drop.classList.remove("over"); }));
