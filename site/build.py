@@ -76,6 +76,7 @@ for key, value in {
     "@@SPEED@@": speed_rows(),
     "@@WALL@@": wall(),
     "@@BUILDS@@": ", ".join(BUILDS),
+    "@@MARK@@": (HERE / "logo.svg").read_text(encoding="utf-8").strip().replace(' role="img" aria-label="Truepix"', ' aria-hidden="true"'),
 }.items():
     page = page.replace(key, value)
 assert "@@" not in page
