@@ -169,7 +169,7 @@ with (DATA / "speed.tex").open("w") as f, (DATA / "speed_pxm.dat").open("w") as 
         part = [r for r in speed if r["method"] == method]
         assert len(part) == 5
         enc, dec, size = np.mean([r["encode"] for r in part]), np.mean([r["decode"] for r in part]), sum(r["size"] for r in part)
-        f.write(f"{method.replace('2x2', '$2{{\\times}}2$').replace('4x4', '$4{{\\times}}4$')} & {enc:.1f} & {dec:.2f} & {(size / base - 1) * 100:+.2f}\\% \\\\\n")
+        f.write(f"{method.replace('PXM', 'Truepix').replace('2x2', '$2{{\\times}}2$').replace('4x4', '$4{{\\times}}4$')} & {enc:.1f} & {dec:.2f} & {(size / base - 1) * 100:+.2f}\\% \\\\\n")
         (d if method.startswith("PXM") else e).write(f"{enc:.2f} {dec:.3f} {(size / base - 1) * 100:.3f} {method.replace('PXM', 'Truepix').replace(' ', '~')}\n")
         key = method.replace(" ", "").replace("2x2tiles", "two").replace("4x4tiles", "four").replace("JPEGXLe", "jxl").replace("10", "ten").replace("9", "nine").replace("WebPlossless", "webp").lower()
         num("sp" + key + "enc", f"{enc:.1f}")
