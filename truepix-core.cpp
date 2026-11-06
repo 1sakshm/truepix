@@ -11,6 +11,7 @@
 //
 // Build: g++ -std=c++17 -O3 -mavx2 -ffp-contract=off -static truepix-core.cpp -o truepix-core.exe
 #include <algorithm>
+#include <array>
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
@@ -1183,6 +1184,986 @@ static const char* unpack(const std::vector<u8>& b, Image& im) {
     return nullptr;
 }
 
+// JPEG recompression. A sequential Huffman JPEG is taken apart into its quantised DCT coefficients
+// and everything else, the coefficients are coded by their own mixing model, and decoding rebuilds
+// the original file byte for byte. Nothing here touches pixel files, which keep their own format.
+static const char JPEG_MAGIC[] = "TPJ1";
+#ifndef JFAST
+#define JFAST 30
+#endif
+#ifndef JSLOW
+#define JSLOW 250
+#endif
+#ifndef JLR
+#define JLR 0.0015
+#endif
+#ifndef JLR2
+#define JLR2 0.01
+#endif
+static const int JCTX = 18, JTABLE_BITS = 20, JINPUT = JCTX * 2 + 1, JNODES = 72;
+
+static const u8 ZIGZAG[64] = {0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28,
+                              35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63};
+// round(8192 * c(u) * cos((2x + 1) u pi / 16)), written out because libm results differ between platforms.
+static const int JBASIS[8][8] = {
+    {5793, 5793, 5793, 5793, 5793, 5793, 5793, 5793},
+    {8035, 6811, 4551, 1598, -1598, -4551, -6811, -8035},
+    {7568, 3135, -3135, -7568, -7568, -3135, 3135, 7568},
+    {6811, -1598, -8035, -4551, 4551, 8035, 1598, -6811},
+    {5793, -5793, -5793, 5793, 5793, -5793, -5793, 5793},
+    {4551, -8035, 1598, 6811, -6811, -1598, 8035, -4551},
+    {3135, -7568, 7568, -3135, -3135, 7568, -7568, 3135},
+    {1598, -4551, 6811, -8035, 8035, -6811, 4551, -1598},
+};
+
+struct JComponent {
+    int id = 0, h = 1, v = 1, tq = 0;
+    int bw = 0, bh = 0;  // blocks, padded to whole MCUs
+    int sw = 0, sh = 0;  // blocks a scan of this component alone would hold
+    std::vector<short> coef;  // bw * bh * 64, natural order
+    short* block(int x, int y) { return &coef[((size_t)y * bw + x) * 64]; }
+};
+
+struct JHuffman {
+    bool ready = false;
+    u8 bits[17] = {}, vals[256] = {};
+    int mincode[17] = {}, maxcode[18] = {}, valptr[17] = {};
+    int code[256] = {}, size[256] = {};
+    void build() {
+        int c = 0, k = 0;
+        for (int l = 1; l <= 16; l++) {
+            valptr[l] = k;
+            mincode[l] = c;
+            for (int i = 0; i < bits[l]; i++, k++, c++) { code[vals[k]] = c; size[vals[k]] = l; }
+            maxcode[l] = bits[l] ? c - 1 : -1;
+            c <<= 1;
+        }
+        ready = true;
+    }
+};
+
+struct JScan {
+    int count = 0, comp[4] = {}, dc[4] = {}, ac[4] = {};
+    int ss = 0, se = 63, ah = 0, al = 0;
+};
+
+struct JFrame {
+    int w = 0, h = 0, hmax = 1, vmax = 1, mcux = 0, mcuy = 0, restart = 0;
+    bool have_frame = false, progressive = false;
+    std::vector<JComponent> comp;
+    int quant[4][64] = {};
+    JHuffman dc[4], ac[4];
+};
+
+struct JReader {
+    const u8* b;
+    size_t n, pos;
+    u32 acc = 0;
+    int have = 0, pad = -1;
+    bool bad = false;
+    int bit() {
+        if (!have) {
+            if (pos >= n) { bad = true; return 0; }
+            int c = b[pos];
+            if (c == 0xFF) {
+                if (pos + 1 >= n || b[pos + 1] != 0) { bad = true; return 0; }
+                pos += 2;
+            } else pos++;
+            acc = c;
+            have = 8;
+        }
+        have--;
+        return (acc >> have) & 1;
+    }
+    int take(int count) { int v = 0; while (count--) v = v * 2 + bit(); return v; }
+    int symbol(const JHuffman& t) {
+        int c = 0;
+        for (int l = 1; l <= 16; l++) {
+            c = c * 2 + bit();
+            if (bad) return 0;
+            if (t.maxcode[l] >= 0 && c <= t.maxcode[l] && c >= t.mincode[l]) return t.vals[t.valptr[l] + c - t.mincode[l]];
+        }
+        bad = true;
+        return 0;
+    }
+    // Spare bits before a marker must all match, or the file can't be rebuilt from one flag.
+    bool align(int& fill) {
+        while (have) {
+            int v = bit();
+            if (fill < 0) fill = v;
+            if (v != fill) return false;
+        }
+        return true;
+    }
+};
+
+struct JWriter {
+    std::vector<u8>& out;
+    u32 acc = 0;
+    int have = 0;
+    void put(int value, int count) {
+        for (int i = count - 1; i >= 0; i--) {
+            acc = acc * 2 + ((value >> i) & 1);
+            if (++have == 8) {
+                out.push_back((u8)acc);
+                if ((acc & 255) == 255) out.push_back(0);
+                acc = 0; have = 0;
+            }
+        }
+    }
+    void align(int fill) { while (have) put(fill, 1); }
+};
+
+static inline int extend(int v, int s) { return s && v < (1 << (s - 1)) ? v - (1 << s) + 1 : v; }
+static inline int bit_length(int a) { int s = 0; while (a) { s++; a >>= 1; } return s; }
+
+// Walks one scan's blocks in file order. visit(component index, block, restart boundary before it).
+template <class Visit>
+static bool jpeg_blocks(JFrame& f, const JScan& s, Visit visit) {
+    bool interleaved = s.count > 1;
+    int units = 0, across, down;
+    if (interleaved) { across = f.mcux; down = f.mcuy; }
+    else { across = f.comp[s.comp[0]].sw; down = f.comp[s.comp[0]].sh; }
+    for (int y = 0; y < down; y++)
+        for (int x = 0; x < across; x++) {
+            bool boundary = f.restart && units && units % f.restart == 0;
+            if (boundary && !visit(-1, nullptr, units / f.restart - 1)) return false;
+            units++;
+            if (!interleaved) {
+                if (!visit(0, f.comp[s.comp[0]].block(x, y), 0)) return false;
+                continue;
+            }
+            for (int i = 0; i < s.count; i++) {
+                JComponent& c = f.comp[s.comp[i]];
+                for (int v = 0; v < c.v; v++)
+                    for (int h = 0; h < c.h; h++)
+                        if (!visit(i, c.block(x * c.h + h, y * c.v + v), 0)) return false;
+            }
+        }
+    return true;
+}
+
+// Reads a scan's entropy-coded data into the coefficient arrays.
+static bool jpeg_read_scan(JFrame& f, const JScan& s, JReader& r, int& fill) {
+    int last[4] = {};
+    bool done = jpeg_blocks(f, s, [&](int i, short* block, int index) {
+        if (i < 0) {
+            if (!r.align(fill)) return false;
+            if (r.pos + 1 >= r.n || r.b[r.pos] != 0xFF || r.b[r.pos + 1] != 0xD0 + (index & 7)) return false;
+            r.pos += 2;
+            memset(last, 0, sizeof last);
+            return true;
+        }
+        const JHuffman& dc = f.dc[s.dc[i]], &ac = f.ac[s.ac[i]];
+        int t = r.symbol(dc);
+        if (r.bad || t > 15) return false;
+        last[i] += extend(r.take(t), t);
+        block[0] = (short)last[i];
+        for (int k = 1; k < 64; k++) {
+            int rs = r.symbol(ac);
+            if (r.bad) return false;
+            int run = rs >> 4, size = rs & 15;
+            if (!size) {
+                if (run != 15) break;
+                k += 15;
+                continue;
+            }
+            k += run;
+            if (k > 63) return false;
+            block[ZIGZAG[k]] = (short)extend(r.take(size), size);
+        }
+        return !r.bad;
+    });
+    return done && r.align(fill);
+}
+
+static bool jpeg_write_scan(JFrame& f, const JScan& s, JWriter& w, int fill) {
+    int last[4] = {};
+    bool done = jpeg_blocks(f, s, [&](int i, short* block, int index) {
+        if (i < 0) {
+            w.align(fill);
+            w.out.push_back(0xFF);
+            w.out.push_back((u8)(0xD0 + (index & 7)));
+            memset(last, 0, sizeof last);
+            return true;
+        }
+        const JHuffman& dc = f.dc[s.dc[i]], &ac = f.ac[s.ac[i]];
+        int diff = block[0] - last[i], t = bit_length(std::abs(diff));
+        last[i] = block[0];
+        if (!dc.size[t]) return false;
+        w.put(dc.code[t], dc.size[t]);
+        if (t) w.put(diff < 0 ? diff + (1 << t) - 1 : diff, t);
+        int run = 0;
+        for (int k = 1; k < 64; k++) {
+            int v = block[ZIGZAG[k]];
+            if (!v) { run++; continue; }
+            while (run > 15) {
+                if (!ac.size[0xF0]) return false;
+                w.put(ac.code[0xF0], ac.size[0xF0]);
+                run -= 16;
+            }
+            int size = bit_length(std::abs(v)), rs = run << 4 | size;
+            if (!ac.size[rs]) return false;
+            w.put(ac.code[rs], ac.size[rs]);
+            w.put(v < 0 ? v + (1 << size) - 1 : v, size);
+            run = 0;
+        }
+        if (run) {
+            if (!ac.size[0]) return false;
+            w.put(ac.code[0], ac.size[0]);
+        }
+        return true;
+    });
+    if (!done) return false;
+    w.align(fill);
+    return true;
+}
+
+// Progressive scans, mirroring how libjpeg writes them, including its end-of-block runs.
+static bool jpeg_read_progressive(JFrame& f, const JScan& s, JReader& r, int& fill) {
+    int last[4] = {}, eobrun = 0;
+    const int p1 = 1 << s.al, m1 = -(1 << s.al);
+    bool done = jpeg_blocks(f, s, [&](int i, short* block, int index) {
+        if (i < 0) {
+            if (!r.align(fill)) return false;
+            if (r.pos + 1 >= r.n || r.b[r.pos] != 0xFF || r.b[r.pos + 1] != 0xD0 + (index & 7)) return false;
+            r.pos += 2;
+            memset(last, 0, sizeof last);
+            eobrun = 0;
+            return true;
+        }
+        if (s.ss == 0) {
+            if (s.ah == 0) {
+                int t = r.symbol(f.dc[s.dc[i]]);
+                if (r.bad || t > 15) return false;
+                last[i] += extend(r.take(t), t);
+                block[0] = (short)(last[i] * p1);
+            } else if (r.bit()) block[0] = (short)(block[0] | p1);
+            return !r.bad;
+        }
+        const JHuffman& ac = f.ac[s.ac[i]];
+        if (s.ah == 0) {
+            if (eobrun > 0) { eobrun--; return true; }
+            for (int k = s.ss; k <= s.se; k++) {
+                int rs = r.symbol(ac);
+                if (r.bad) return false;
+                int run = rs >> 4, size = rs & 15;
+                if (size) {
+                    k += run;
+                    if (k > s.se) return false;
+                    block[ZIGZAG[k]] = (short)(extend(r.take(size), size) * p1);
+                } else if (run == 15) {
+                    k += 15;
+                } else {
+                    eobrun = (1 << run) + (run ? r.take(run) : 0) - 1;
+                    break;
+                }
+            }
+            return !r.bad;
+        }
+        int k = s.ss;
+        auto refine = [&](short& c) {
+            if (r.bit() && !(c & p1)) c = (short)(c + (c >= 0 ? p1 : m1));
+        };
+        if (eobrun == 0) {
+            for (; k <= s.se; k++) {
+                int rs = r.symbol(ac);
+                if (r.bad) return false;
+                int run = rs >> 4, size = rs & 15, value = 0;
+                if (size) {
+                    if (size != 1) return false;
+                    value = r.bit() ? p1 : m1;
+                } else if (run != 15) {
+                    eobrun = (1 << run) + (run ? r.take(run) : 0);
+                    break;
+                }
+                do {
+                    short& c = block[ZIGZAG[k]];
+                    if (c) refine(c);
+                    else if (--run < 0) break;
+                    k++;
+                } while (k <= s.se);
+                if (value) {
+                    if (k > s.se) return false;
+                    block[ZIGZAG[k]] = (short)value;
+                }
+            }
+        }
+        if (eobrun > 0) {
+            for (; k <= s.se; k++) {
+                short& c = block[ZIGZAG[k]];
+                if (c) refine(c);
+            }
+            eobrun--;
+        }
+        return !r.bad;
+    });
+    return done && !eobrun && r.align(fill);
+}
+
+static bool jpeg_write_progressive(JFrame& f, const JScan& s, JWriter& w, int fill) {
+    int last[4] = {}, eobrun = 0;
+    std::vector<u8> be, br;
+    bool ok = true;
+    const JHuffman* table = nullptr;
+    auto symbol = [&](int rs) {
+        if (!table || !table->size[rs]) { ok = false; return; }
+        w.put(table->code[rs], table->size[rs]);
+    };
+    auto flush_run = [&]() {
+        if (eobrun > 0) {
+            int nbits = bit_length(eobrun) - 1;
+            symbol(nbits << 4);
+            if (nbits) w.put(eobrun & ((1 << nbits) - 1), nbits);
+            eobrun = 0;
+        }
+        for (u8 bit : be) w.put(bit, 1);
+        be.clear();
+    };
+    bool done = jpeg_blocks(f, s, [&](int i, short* block, int index) {
+        if (i < 0) {
+            flush_run();
+            w.align(fill);
+            w.out.push_back(0xFF);
+            w.out.push_back((u8)(0xD0 + (index & 7)));
+            memset(last, 0, sizeof last);
+            return ok;
+        }
+        if (s.ss == 0) {
+            if (s.ah == 0) {
+                const JHuffman& dc = f.dc[s.dc[i]];
+                int v = block[0] >> s.al, diff = v - last[i], t = bit_length(std::abs(diff));
+                last[i] = v;
+                if (!dc.size[t]) return false;
+                w.put(dc.code[t], dc.size[t]);
+                if (t) w.put(diff < 0 ? diff + (1 << t) - 1 : diff, t);
+            } else w.put((block[0] >> s.al) & 1, 1);
+            return true;
+        }
+        table = &f.ac[s.ac[i]];
+        if (s.ah == 0) {
+            int run = 0;
+            for (int k = s.ss; k <= s.se; k++) {
+                int v = block[ZIGZAG[k]], a = std::abs(v) >> s.al;
+                if (!a) { run++; continue; }
+                flush_run();
+                while (run > 15) { symbol(0xF0); run -= 16; }
+                int size = bit_length(a);
+                symbol(run << 4 | size);
+                w.put(v < 0 ? ~a & ((1 << size) - 1) : a, size);
+                run = 0;
+            }
+            if (run > 0 && ++eobrun == 0x7FFF) flush_run();
+            return ok;
+        }
+        int magnitude[64], end = 0;
+        for (int k = s.ss; k <= s.se; k++) {
+            magnitude[k] = std::abs((int)block[ZIGZAG[k]]) >> s.al;
+            if (magnitude[k] == 1) end = k;
+        }
+        int run = 0;
+        br.clear();
+        for (int k = s.ss; k <= s.se; k++) {
+            int a = magnitude[k];
+            if (!a) { run++; continue; }
+            while (run > 15 && k <= end) {
+                flush_run();
+                symbol(0xF0);
+                run -= 16;
+                for (u8 bit : br) w.put(bit, 1);
+                br.clear();
+            }
+            if (a > 1) { br.push_back((u8)(a & 1)); continue; }
+            flush_run();
+            symbol(run << 4 | 1);
+            w.put(block[ZIGZAG[k]] < 0 ? 0 : 1, 1);
+            for (u8 bit : br) w.put(bit, 1);
+            br.clear();
+            run = 0;
+        }
+        if (run > 0 || !br.empty()) {
+            eobrun++;
+            be.insert(be.end(), br.begin(), br.end());
+            br.clear();
+            if (eobrun == 0x7FFF || be.size() > 1000 - 64 + 1) flush_run();
+        }
+        return ok;
+    });
+    if (!done || !ok) return false;
+    flush_run();
+    if (!ok) return false;
+    w.align(fill);
+    return true;
+}
+
+// Walks the markers of a JPEG. on_scan gets each scan and the position after its header, and returns
+// where the markers continue. The same walk serves the original file and the stored headers.
+template <class OnScan>
+static const char* jpeg_walk(const u8* b, size_t n, JFrame& f, OnScan on_scan) {
+    if (n < 4 || b[0] != 0xFF || b[1] != 0xD8) return "not a JPEG";
+    size_t pos = 2;
+    for (;;) {
+        if (pos + 2 > n) return "truncated JPEG";
+        if (b[pos] != 0xFF) return "unexpected JPEG data";
+        int marker = b[pos + 1];
+        if (marker == 0xFF) { pos++; continue; }
+        pos += 2;
+        if (marker == 0xD9) return nullptr;
+        if (pos + 2 > n) return "truncated JPEG";
+        size_t length = (size_t)b[pos] << 8 | b[pos + 1], end = pos + length;
+        if (length < 2 || end > n) return "truncated JPEG";
+        const u8* p = b + pos + 2;
+        size_t left = length - 2;
+        if (marker == 0xC3 || (marker >= 0xC5 && marker <= 0xCB && marker != 0xC4) || (marker >= 0xCD && marker <= 0xCF)) return "unsupported JPEG type";
+        if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2) {
+            f.progressive = marker == 0xC2;
+            if (left < 6 || p[0] != 8 || f.have_frame) return "unsupported JPEG type";
+            f.h = p[1] << 8 | p[2];
+            f.w = p[3] << 8 | p[4];
+            int count = p[5];
+            if (!f.w || !f.h || count < 1 || count > 4 || left < 6 + (size_t)count * 3) return "unsupported JPEG type";
+            f.comp.assign(count, JComponent());
+            for (int i = 0; i < count; i++) {
+                JComponent& c = f.comp[i];
+                c.id = p[6 + i * 3];
+                c.h = p[7 + i * 3] >> 4;
+                c.v = p[7 + i * 3] & 15;
+                c.tq = p[8 + i * 3];
+                if (c.h < 1 || c.h > 4 || c.v < 1 || c.v > 4 || c.tq > 3) return "unsupported JPEG type";
+                f.hmax = std::max(f.hmax, c.h);
+                f.vmax = std::max(f.vmax, c.v);
+            }
+            f.mcux = (f.w + f.hmax * 8 - 1) / (f.hmax * 8);
+            f.mcuy = (f.h + f.vmax * 8 - 1) / (f.vmax * 8);
+            if ((long long)f.mcux * f.mcuy * f.hmax * f.vmax * 64 > (long long)1 << 31) return "JPEG too large";
+            for (auto& c : f.comp) {
+                c.bw = f.mcux * c.h;
+                c.bh = f.mcuy * c.v;
+                c.sw = ((f.w * c.h + f.hmax - 1) / f.hmax + 7) / 8;
+                c.sh = ((f.h * c.v + f.vmax - 1) / f.vmax + 7) / 8;
+                c.coef.assign((size_t)c.bw * c.bh * 64, 0);
+            }
+            f.have_frame = true;
+        } else if (marker == 0xC4) {
+            while (left >= 17) {
+                int info = p[0], kind = info >> 4, slot = info & 15, total = 0;
+                if (kind > 1 || slot > 3) return "unsupported JPEG type";
+                JHuffman& t = kind ? f.ac[slot] : f.dc[slot];
+                for (int i = 1; i <= 16; i++) { t.bits[i] = p[i]; total += p[i]; }
+                if (total > 256 || left < 17 + (size_t)total) return "unsupported JPEG type";
+                memset(t.size, 0, sizeof t.size);
+                memcpy(t.vals, p + 17, total);
+                t.build();
+                p += 17 + total;
+                left -= 17 + total;
+            }
+        } else if (marker == 0xDB) {
+            while (left >= 65) {
+                int precision = p[0] >> 4, slot = p[0] & 15;
+                if (precision || slot > 3) return "unsupported JPEG type";
+                for (int i = 0; i < 64; i++) f.quant[slot][ZIGZAG[i]] = p[1 + i];
+                p += 65;
+                left -= 65;
+            }
+        } else if (marker == 0xDD) {
+            if (left < 2) return "truncated JPEG";
+            f.restart = p[0] << 8 | p[1];
+        } else if (marker == 0xDA) {
+            if (!f.have_frame || left < 1) return "unsupported JPEG type";
+            JScan s;
+            s.count = p[0];
+            if (s.count < 1 || s.count > 4 || left < 4 + (size_t)s.count * 2) return "unsupported JPEG type";
+            for (int i = 0; i < s.count; i++) {
+                int id = p[1 + i * 2], found = -1;
+                for (size_t c = 0; c < f.comp.size(); c++) if (f.comp[c].id == id) found = (int)c;
+                if (found < 0) return "unsupported JPEG type";
+                s.comp[i] = found;
+                s.dc[i] = p[2 + i * 2] >> 4;
+                s.ac[i] = p[2 + i * 2] & 15;
+                if (s.dc[i] > 3 || s.ac[i] > 3) return "unsupported JPEG type";
+            }
+            size_t tail = 1 + (size_t)s.count * 2;
+            s.ss = p[tail];
+            s.se = p[tail + 1];
+            s.ah = p[tail + 2] >> 4;
+            s.al = p[tail + 2] & 15;
+            if (f.progressive) {
+                bool valid = s.ss <= s.se && s.se < 64 && s.al < 14 && s.ah < 14 && (s.ss == 0 ? s.se == 0 : s.count == 1);
+                if (!valid) return "unsupported JPEG type";
+            }
+            for (int i = 0; i < s.count; i++) {
+                bool needs_dc = !f.progressive || (s.ss == 0 && s.ah == 0), needs_ac = !f.progressive || s.ss > 0;
+                if ((needs_dc && !f.dc[s.dc[i]].ready) || (needs_ac && !f.ac[s.ac[i]].ready)) return "unsupported JPEG type";
+            }
+            long next = on_scan(s, end);
+            if (next < 0) return "unusual JPEG coding";
+            pos = (size_t)next;
+            continue;
+        }
+        pos = end;
+    }
+}
+
+// Lays a file out from its stored headers and coefficients.
+static const char* jpeg_rebuild(const std::vector<u8>& head, JFrame& f, int fill, std::vector<u8>& out) {
+    JFrame layout;
+    size_t copied = 0;
+    const char* problem = jpeg_walk(head.data(), head.size(), layout, [&](const JScan& s, size_t after) -> long {
+        out.insert(out.end(), head.begin() + copied, head.begin() + after);
+        copied = after;
+        JWriter w{out};
+        // Tables can change between scans, so each scan uses the ones in force where it sits.
+        memcpy(f.dc, layout.dc, sizeof f.dc);
+        memcpy(f.ac, layout.ac, sizeof f.ac);
+        f.restart = layout.restart;
+        bool written = layout.progressive ? jpeg_write_progressive(f, s, w, fill) : jpeg_write_scan(f, s, w, fill);
+        return written ? (long)after : -1;
+    });
+    if (problem) return problem;
+    out.insert(out.end(), head.begin() + copied, head.end());
+    return nullptr;
+}
+
+// The coefficient model.
+struct JModel {
+    std::vector<Counter> tables[JCTX];
+    u32 ctx[JCTX];
+    Counter* active[JCTX];
+    Mixer mix[3], final_mix;
+    APM apm;
+    float inputs[JINPUT], second[3];
+    double lr_scale = 1;
+    long decisions = 0;
+    void init() {
+        for (auto& t : tables) t.assign(1 << JTABLE_BITS, Counter());
+        mix[0].init(JINPUT, JNODES * 64, 0.14f);
+        mix[1].init(JINPUT, 4 * 16 * 8, 0.14f);
+        mix[2].init(JINPUT, 4 * 256, 0.14f);
+        final_mix.init(3, JNODES, 0.33f);
+        apm.init(JNODES * 16);
+    }
+};
+
+template <bool ENC>
+static int jbit(JModel& m, Coder& coder, int bit, int node, int z, int s1, int s2, int s3) {
+    float* in = m.inputs;
+    int k = 0;
+    for (int i = 0; i < JCTX; i++) {
+        m.active[i] = &m.tables[i][(m.ctx[i] + (u32)(node + 1) * 0x9E3779B1u) >> (32 - JTABLE_BITS)];
+        __builtin_prefetch(m.active[i], 1);
+    }
+    for (int i = 0; i < JCTX; i++) {
+        const Counter* e = m.active[i];
+        in[k++] = STRETCH[(int)e->fast >> 4];
+        in[k++] = STRETCH[(int)e->slow >> 4];
+    }
+    in[k++] = 0.3f;
+    m.second[0] = m.mix[0].mix(in, node * 64 + z);
+    m.second[1] = m.mix[1].mix(in, s1);
+    m.second[2] = m.mix[2].mix(in, s2);
+    float st = m.final_mix.mix(m.second, node);
+    float p0 = m.final_mix.pr;
+    float a0 = m.apm.refine(st, node * 16 + s3);
+    float p = 0.6f * p0 + 0.4f * a0;
+    u32 p16 = (u32)(clamp_p(p) * 65536.f);
+    p16 = std::min<u32>(65535 - 16, std::max<u32>(16, p16));
+    bit = coder.code<ENC>(bit, p16);
+    float lr = (float)(JLR + JLR2 * m.lr_scale);
+    for (int i = 0; i < 3; i++) m.mix[i].update(in, bit, lr);
+    m.final_mix.update(m.second, bit, 0.002f);
+    m.apm.update(bit, 0.02f);
+    int fast[JCTX], slow[JCTX], seen[JCTX];
+    for (int i = 0; i < JCTX; i++) {
+        const Counter* e = m.active[i];
+        fast[i] = e->fast; slow[i] = e->slow; seen[i] = e->n;
+    }
+    const int target = bit ? 65535 : 0;
+    for (int i = 0; i < JCTX; i++) {
+        fast[i] = (int)((float)fast[i] + (float)(target - fast[i]) / ((float)std::min(seen[i], JFAST) + 1.5f));
+        slow[i] = (int)((float)slow[i] + (float)(target - slow[i]) / ((float)std::min(seen[i], JSLOW) + 1.5f));
+    }
+    for (int i = 0; i < JCTX; i++) {
+        Counter* e = m.active[i];
+        e->fast = (u16)fast[i]; e->slow = (u16)slow[i];
+        if (seen[i] < 1000) e->n = (u16)(seen[i] + 1);
+    }
+    m.decisions++;
+    return bit;
+}
+
+template <bool ENC>
+static int jvalue(JModel& m, Coder& coder, int v, int z, int s1, int s2, int s3) {
+    if (jbit<ENC>(m, coder, ENC ? v == 0 : 0, 0, z, s1, s2, s3)) return 0;
+    int negative = jbit<ENC>(m, coder, ENC ? v < 0 : 0, 1, z, s1, s2, s3);
+    int a = std::abs(v), e = 0;
+    if (ENC) while (a >> (e + 1)) e++;
+    int i = 0;
+    for (; i < 13; i++)
+        if (!jbit<ENC>(m, coder, ENC ? e > i : 0, 2 + i, z, s1, s2, s3)) break;
+    e = i;
+    int r = 1;
+    for (int k = e - 1; k >= 0; k--) {
+        int bit = jbit<ENC>(m, coder, ENC ? (a >> k) & 1 : 0, 16 + std::min(e, 7) * 2 + (k == e - 1 ? 0 : 1), z, s1, s2, s3);
+        r = r * 2 + bit;
+    }
+    return negative ? -r : r;
+}
+
+static inline int signed_bucket(int v) {
+    int a = std::abs(v), q = a == 0 ? 0 : a == 1 ? 1 : a == 2 ? 2 : a <= 4 ? 3 : a <= 8 ? 4 : a <= 16 ? 5 : a <= 32 ? 6 : 7;
+    return v < 0 ? 8 + q : q;
+}
+
+struct JPlane {
+    std::vector<int> pixels;   // eight times each sample, for blocks finished so far
+    std::vector<u8> interior;  // nonzero interior coefficients per block
+    std::vector<u8> edge;      // nonzero edge coefficients per block
+};
+
+// Coefficients of one block go interior first, then edges, then DC, so each step can lean on the last.
+static int JORDER_INNER[49], JORDER_EDGE[14], JPOSITION[64];
+static const bool jorder_ready = [] {
+    int inner = 0, edge = 0;
+    for (int z = 1; z < 64; z++) {
+        int n = ZIGZAG[z];
+        JPOSITION[n] = z;
+        if ((n & 7) && (n >> 3)) JORDER_INNER[inner++] = n;
+        else JORDER_EDGE[edge++] = n;
+    }
+    return true;
+}();
+
+template <bool ENC>
+static int jcount(JModel& m, Coder& coder, int value, int bits, int kind, int a, int b, int c) {
+    int tree = 1;
+    for (int i = bits - 1; i >= 0; i--) {
+        for (int k = 0; k < JCTX; k++) {
+            u32 h = hash32(hash32(0x7000 + k * 16 + kind, tree), 0);
+            if (k == 1) h = hash32(h, a);
+            else if (k == 2) h = hash32(h, b);
+            else if (k == 3) h = hash32(h, a * 64 + b);
+            else if (k == 4) h = hash32(h, c);
+            else if (k == 5) h = hash32(h, a * 64 + c);
+            else if (k > 5) h = hash32(h, (a / 4) * 64 + (b / 4) + (k << 16));
+            m.ctx[k] = h;
+        }
+        int bit = jbit<ENC>(m, coder, ENC ? (value >> i) & 1 : 0, 40 + kind * 8 + std::min(bits - 1 - i, 5), std::min(tree, 63),
+                            std::min(a, 15) * 8 + std::min(b / 2, 7), kind * 256 + std::min(a, 15) * 16 + std::min(c, 15), std::min(a, 15));
+        tree = tree * 2 + bit;
+    }
+    return tree - (1 << bits);
+}
+
+template <bool ENC>
+static void jcode_block(JModel& m, Coder& coder, JFrame& f, std::vector<JPlane>& planes, int ci, int x, int y, int top) {
+    JComponent& comp = f.comp[ci];
+    JPlane& plane = planes[ci];
+    const int* quant = f.quant[comp.tq];
+    short* block = comp.block(x, y);
+    const bool up = y > top, left = x > 0;
+    const short* above = up ? comp.block(x, y - 1) : nullptr;
+    const short* before = left ? comp.block(x - 1, y) : nullptr;
+    const short* corner = up && left ? comp.block(x - 1, y - 1) : nullptr;
+    const size_t at = (size_t)y * comp.bw + x;
+    const short* luma = nullptr, *blue = nullptr;
+    if (ci > 0) {
+        JComponent& c0 = f.comp[0];
+        luma = c0.block(std::min(x * c0.h / comp.h, c0.bw - 1), std::min(y * c0.v / comp.v, c0.bh - 1));
+        if (ci == 2) blue = f.comp[1].block(x, y);
+    }
+    int kind = ci ? 1 : 0;
+    int cur[64] = {};
+    int inner = 0, edge = 0;
+    int last1 = 0, last2 = 0, block_sum = 0;
+    if (ENC) {
+        for (int i = 0; i < 49; i++) inner += block[JORDER_INNER[i]] != 0;
+        for (int i = 0; i < 14; i++) edge += block[JORDER_EDGE[i]] != 0;
+    }
+    int near_inner = up && left ? (plane.interior[at - comp.bw] + plane.interior[at - 1] + 1) / 2 : up ? plane.interior[at - comp.bw] : left ? plane.interior[at - 1] : 0;
+    int near_edge = up && left ? (plane.edge[at - comp.bw] + plane.edge[at - 1] + 1) / 2 : up ? plane.edge[at - comp.bw] : left ? plane.edge[at - 1] : 0;
+    int luma_count = 0;
+    if (luma) for (int i = 0; i < 49; i++) luma_count += luma[JORDER_INNER[i]] != 0;
+    inner = jcount<ENC>(m, coder, inner, 6, kind, near_inner, quant_log(luma_count), quant_log(near_edge));
+    const int block_energy = quant_log(near_inner);
+
+    auto contexts = [&](int n, int count_left, int prediction) {
+        const int u = n & 7, v = n >> 3, z = JPOSITION[n];
+        int a = above ? std::abs(above[n]) : 0, b = before ? std::abs(before[n]) : 0, c = corner ? std::abs(corner[n]) : 0;
+        int nearby = (13 * a + 13 * b + 6 * c) / 8;
+        int inside = 0;
+        if (u) inside += std::abs(cur[n - 1]);
+        if (v) inside += std::abs(cur[n - 8]);
+        if (u && v) inside += std::abs(cur[n - 9]);
+        if (u > 1) inside += std::abs(cur[n - 2]);
+        if (v > 1) inside += std::abs(cur[n - 16]);
+        int row = 0, col = 0;
+        for (int i = 0; i < u; i++) row += std::abs(cur[v * 8 + i]);
+        for (int i = 0; i < v; i++) col += std::abs(cur[i * 8 + u]);
+        int qn = quant_log(nearby), qi = quant_log(inside * 2), qc = quant_log(count_left);
+        int up_sign = above ? signed_bucket(above[n]) : 15, left_sign = before ? signed_bucket(before[n]) : 15;
+        int luma_here = luma ? signed_bucket(luma[n]) : 15, blue_here = blue ? signed_bucket(blue[n]) : 15;
+        int pred = signed_bucket(prediction);
+        u32 base = (u32)(z + kind * 64) << 8;
+        m.ctx[0] = hash32(base + 1, qn);
+        m.ctx[1] = hash32(base + 2, qi);
+        m.ctx[2] = hash32(base + 3, qc);
+        m.ctx[3] = hash32(base + 4, qn * 16 + qi);
+        m.ctx[4] = hash32(base + 5, qc * 16 + qi);
+        m.ctx[5] = hash32(base + 6, luma_here * 16 + blue_here);
+        m.ctx[6] = hash32(kind * 64 + 7, qn * 256 + qi * 16 + qc);
+        m.ctx[7] = hash32(base + 8, up_sign * 16 + left_sign);
+        m.ctx[8] = hash32(base + 9, pred);
+        m.ctx[9] = hash32(base + 10, block_energy * 16 + qc);
+        m.ctx[10] = hash32(base + 11, quant_log(row) * 16 + quant_log(col));
+        m.ctx[11] = hash32(base + 12, quant_log(quant[n]) * 16 + qn);
+        m.ctx[12] = hash32(base + 13, pred * 16 + qc);
+        m.ctx[13] = hash32(base + 14, pred * 256 + up_sign * 16 + qi);
+        int wide = 0;
+        if (above) { if (u) wide += std::abs(above[n - 1]); if (u < 7) wide += std::abs(above[n + 1]); if (v < 7) wide += std::abs(above[n + 8]); }
+        if (before) { if (v) wide += std::abs(before[n - 8]); if (v < 7) wide += std::abs(before[n + 8]); if (u < 7) wide += std::abs(before[n + 1]); }
+        m.ctx[14] = hash32(base + 15, signed_bucket(last1) * 16 + signed_bucket(last2));
+        m.ctx[15] = hash32(base + 16, quant_log(wide) * 16 + qn);
+        m.ctx[16] = hash32(base + 17, quant_log(block_sum) * 16 + qc);
+        m.ctx[17] = hash32(base + 18, (luma ? quant_log(std::abs(luma[n])) : 15) * 16 + qn);
+        return std::array<int, 3>{kind * 128 + qn * 8 + std::min(qc, 7), (kind + (u && v ? 0 : 1)) * 256 + qn * 16 + qi, qn};
+    };
+
+    int remaining = inner;
+    for (int i = 0; i < 49 && remaining; i++) {
+        int n = JORDER_INNER[i];
+        auto s = contexts(n, remaining, 0);
+        int v = jvalue<ENC>(m, coder, ENC ? block[n] : 0, JPOSITION[n], s[0], s[1], s[2]);
+        cur[n] = v;
+        remaining -= v != 0;
+        last2 = last1; last1 = v; block_sum += std::abs(v);
+    }
+    edge = jcount<ENC>(m, coder, edge, 4, 2 + kind, near_edge, quant_log(inner), 0);
+    remaining = edge;
+    for (int i = 0; i < 14 && remaining; i++) {
+        int n = JORDER_EDGE[i];
+        // Continuity with the neighbouring block predicts its top row and left column.
+        int prediction = 0;
+        const int u = n & 7, v = n >> 3;
+        if (v == 0 && above) {
+            long long sum = 0;
+            for (int j = 0; j < 8; j++) sum += (long long)above[j * 8 + u] * quant[j * 8 + u] * JBASIS[j][7];
+            for (int j = 1; j < 8; j++) sum -= (long long)cur[j * 8 + u] * quant[j * 8 + u] * JBASIS[j][0];
+            prediction = (int)(sum / ((long long)JBASIS[0][0] * quant[n]));
+        } else if (u == 0 && before) {
+            long long sum = 0;
+            for (int j = 0; j < 8; j++) sum += (long long)before[v * 8 + j] * quant[v * 8 + j] * JBASIS[j][7];
+            for (int j = 1; j < 8; j++) sum -= (long long)cur[v * 8 + j] * quant[v * 8 + j] * JBASIS[j][0];
+            prediction = (int)(sum / ((long long)JBASIS[0][0] * quant[n]));
+        }
+        auto s = contexts(n, remaining, prediction);
+        int value = jvalue<ENC>(m, coder, ENC ? block[n] : 0, JPOSITION[n], s[0], s[1], s[2]);
+        cur[n] = value;
+        remaining -= value != 0;
+        last2 = last1; last1 = value; block_sum += std::abs(value);
+    }
+
+    // Samples from the AC coefficients alone, in eighths, by integer maths.
+    int rows[8][8];
+    long long middle[8][8];
+    for (int v = 0; v < 8; v++)
+        for (int px = 0; px < 8; px++) {
+            long long sum = 0;
+            for (int u = 0; u < 8; u++) if (u + v) sum += (long long)cur[v * 8 + u] * quant[v * 8 + u] * JBASIS[u][px];
+            middle[v][px] = sum;
+        }
+    for (int py = 0; py < 8; py++)
+        for (int px = 0; px < 8; px++) {
+            long long sum = 0;
+            for (int v = 0; v < 8; v++) sum += middle[v][px] * JBASIS[v][py];
+            rows[py][px] = (int)(sum >> 25);
+        }
+    int deltas[16], count = 0;
+    int* cells = plane.pixels.data();
+    const size_t here = at * 64;
+    if (up) {
+        const int* p = cells + (at - comp.bw) * 64;
+        for (int i = 0; i < 8; i++) {
+            int a = p[56 + i], b = p[48 + i], c0 = rows[0][i], c1 = rows[1][i];
+            deltas[count++] = (a + (a - b) / 2) - (c0 + (c0 - c1) / 2);
+        }
+    }
+    if (left) {
+        const int* p = cells + (at - 1) * 64;
+        for (int i = 0; i < 8; i++) {
+            int a = p[i * 8 + 7], b = p[i * 8 + 6], c0 = rows[i][0], c1 = rows[i][1];
+            deltas[count++] = (a + (a - b) / 2) - (c0 + (c0 - c1) / 2);
+        }
+    }
+    int predicted = 0, spread = 0;
+    if (count) {
+        std::sort(deltas, deltas + count);
+        spread = deltas[count - 1] - deltas[0];
+        int sum = 0, used = 0;
+        for (int i = count / 4; i < count - count / 4; i++) { sum += deltas[i]; used++; }
+        predicted = sum / used;
+    }
+    int q0 = quant[0], guess = predicted >= 0 ? (predicted + q0 / 2) / q0 : -((-predicted + q0 / 2) / q0);
+    u32 base = (u32)(kind + 2) << 20;
+    int qs = quant_log(spread / 8), ql = quant_log(inner + edge);
+    int up_residual = above ? above[0] : 0, left_residual = before ? before[0] : 0;
+    m.ctx[0] = hash32(base + 1, qs);
+    m.ctx[1] = hash32(base + 2, ql);
+    m.ctx[2] = hash32(base + 3, qs * 16 + ql);
+    m.ctx[3] = hash32(base + 4, signed_bucket(guess - up_residual) * 16 + signed_bucket(guess - left_residual));
+    m.ctx[4] = hash32(base + 5, quant_log(q0) * 16 + qs);
+    m.ctx[5] = hash32(base + 6, luma ? signed_bucket(luma[0] - guess) : 15);
+    m.ctx[6] = hash32(base + 7, blue ? signed_bucket(blue[0] - guess) : 15);
+    m.ctx[7] = hash32(base + 8, signed_bucket(guess));
+    for (int i = 8; i < JCTX; i++) m.ctx[i] = hash32(base + 9 + i, qs * 256 + ql * 16 + i);
+    int dc = guess + jvalue<ENC>(m, coder, ENC ? block[0] - guess : 0, 0, kind * 128 + qs * 8 + std::min(ql, 7), 2 * 256 + qs * 16 + ql, qs);
+    cur[0] = dc;
+    if (!ENC) for (int i = 0; i < 64; i++) block[i] = (short)cur[i];
+    const int level = dc * q0;
+    for (int py = 0; py < 8; py++)
+        for (int px = 0; px < 8; px++) cells[here + py * 8 + px] = rows[py][px] + level;
+    plane.interior[at] = (u8)inner;
+    plane.edge[at] = (u8)edge;
+}
+
+template <bool ENC>
+static void jcode_band(JFrame& f, Coder& coder, int first, int last) {
+    JModel* m = new JModel();
+    m->init();
+    std::vector<JPlane> planes(f.comp.size());
+    long total = 0, done = 0;
+    for (size_t c = 0; c < f.comp.size(); c++) {
+        JComponent& comp = f.comp[c];
+        size_t blocks = (size_t)comp.bw * comp.bh;
+        planes[c].pixels.assign(blocks * 64, 0);
+        planes[c].interior.assign(blocks, 0);
+        planes[c].edge.assign(blocks, 0);
+        total += (long)(last - first) * comp.v * comp.bw;
+    }
+    for (size_t c = 0; c < f.comp.size(); c++) {
+        JComponent& comp = f.comp[c];
+        for (int y = first * comp.v; y < last * comp.v; y++)
+            for (int x = 0; x < comp.bw; x++) {
+                jcode_block<ENC>(*m, coder, f, planes, (int)c, x, y, first * comp.v);
+                done++;
+                m->lr_scale = std::max(0.0, 1.0 - (double)done / std::min<long>(total, 60000));
+#ifdef TRUEPIX_WASM
+                if ((done & 0xff) == 0) tp_tick(0x100);
+#endif
+            }
+    }
+    delete m;
+}
+
+// Stored headers go through a small order-1 and order-2 model.
+template <bool ENC>
+static void jcode_bytes(Coder& coder, std::vector<u8>& data, size_t size) {
+    std::vector<u16> one(1 << 16, 32768), two(1 << 22, 32768);
+    u32 c1 = 0, c2 = 0;
+    data.resize(size);
+    for (size_t i = 0; i < size; i++) {
+        int tree = 1;
+        for (int b = 7; b >= 0; b--) {
+            u16& p1 = one[c1 << 8 | tree];
+            u16& p2 = two[(hash32(c2, tree) >> 10)];
+            u32 p = (((u32)p1 + p2) >> 1);
+            p = std::min<u32>(65535 - 32, std::max<u32>(32, p));
+            int bit = coder.code<ENC>(ENC ? (data[i] >> b) & 1 : 0, p);
+            if (bit) { p1 += (65535 - p1) >> 4; p2 += (65535 - p2) >> 4; } else { p1 -= p1 >> 4; p2 -= p2 >> 4; }
+            tree = tree * 2 + bit;
+        }
+        if (!ENC) data[i] = (u8)tree;
+        c2 = c1 | c2 << 8;
+        c1 = data[i];
+    }
+}
+
+static void put_u32(std::vector<u8>& out, u32 v) { for (int i = 0; i < 4; i++) out.push_back((u8)(v >> (8 * i))); }
+
+// A JPEG becomes TPJ1, or returns why it can't. Every file is rebuilt before it is accepted.
+static const char* jpeg_pack(const std::vector<u8>& file, std::vector<u8>& out) {
+    JFrame f;
+    std::vector<u8> head;
+    size_t copied = 0;
+    int fill = -1;
+    const char* problem = jpeg_walk(file.data(), file.size(), f, [&](const JScan& s, size_t after) -> long {
+        head.insert(head.end(), file.begin() + copied, file.begin() + after);
+        JReader r{file.data(), file.size(), after};
+        if (!(f.progressive ? jpeg_read_progressive(f, s, r, fill) : jpeg_read_scan(f, s, r, fill))) return -1;
+        copied = r.pos;
+        return (long)r.pos;
+    });
+    if (problem) return problem;
+    head.insert(head.end(), file.begin() + copied, file.end());
+    if (fill < 0) fill = 1;
+    std::vector<u8> rebuilt;
+    rebuilt.reserve(file.size());
+    if (const char* again = jpeg_rebuild(head, f, fill, rebuilt)) return again;
+    if (rebuilt != file) return "unusual JPEG coding";
+
+    std::vector<u8> packed_head;
+    {
+        Coder coder;
+        coder.out = &packed_head;
+        jcode_bytes<true>(coder, head, head.size());
+        coder.flush();
+    }
+    int bands = f.mcuy >= 8 && (long long)f.w * f.h >= (1 << 20) ? 4 : 1;
+    std::vector<std::vector<u8>> parts(bands);
+    run_tiles(bands, [&](int t) {
+        Coder coder;
+        coder.out = &parts[t];
+        jcode_band<true>(f, coder, f.mcuy * t / bands, f.mcuy * (t + 1) / bands);
+        coder.flush();
+    });
+    for (const char* m = JPEG_MAGIC; *m; m++) out.push_back((u8)*m);
+    put_u32(out, (u32)file.size());
+    put_u32(out, crc32_of(file));
+    out.push_back((u8)fill);
+    out.push_back((u8)bands);
+    put_u32(out, (u32)head.size());
+    put_u32(out, (u32)packed_head.size());
+    for (auto& part : parts) put_u32(out, (u32)part.size());
+    out.insert(out.end(), packed_head.begin(), packed_head.end());
+    for (auto& part : parts) out.insert(out.end(), part.begin(), part.end());
+    return nullptr;
+}
+
+static const char* jpeg_unpack(const std::vector<u8>& b, std::vector<u8>& out) {
+    const size_t FIXED = 22;
+    if (b.size() < FIXED) return "damaged Truepix file";
+    u32 size = get32(b.data() + 4), expected = get32(b.data() + 8);
+    int fill = b[12], bands = b[13];
+    size_t head_size = get32(b.data() + 14), packed_size = get32(b.data() + 18);
+    if (fill > 1 || (bands != 1 && bands != 4) || b.size() < FIXED + (size_t)bands * 4 || head_size > size || head_size > (size_t)1 << 28) return "damaged Truepix file";
+    size_t at = FIXED + (size_t)bands * 4;
+    if (packed_size > b.size() - at) return "damaged Truepix file";
+    std::vector<u8> head;
+    {
+        Coder coder;
+        coder.in = b.data() + at;
+        coder.size = packed_size;
+        coder.start_decode();
+        jcode_bytes<false>(coder, head, head_size);
+    }
+    at += packed_size;
+    JFrame f;
+    if (const char* problem = jpeg_walk(head.data(), head.size(), f, [](const JScan&, size_t after) -> long { return (long)after; })) return problem;
+    std::vector<size_t> start(bands + 1);
+    start[0] = at;
+    for (int t = 0; t < bands; t++) start[t + 1] = start[t] + get32(b.data() + FIXED + (size_t)t * 4);
+    if (start[bands] != b.size()) return "damaged Truepix file";
+    run_tiles(bands, [&](int t) {
+        Coder coder;
+        coder.in = b.data() + start[t];
+        coder.size = start[t + 1] - start[t];
+        coder.start_decode();
+        jcode_band<false>(f, coder, f.mcuy * t / bands, f.mcuy * (t + 1) / bands);
+    });
+    if (const char* problem = jpeg_rebuild(head, f, fill, out)) return problem;
+    if (out.size() != size || crc32_of(out) != expected) return "Truepix decode failed its checksum";
+    return nullptr;
+}
+
 // Tiling trades a little size for speed, and only pays on large images.
 static int default_side(const Image& im) { return (long long)im.w * im.h >= (1 << 20) ? 2 : 1; }
 
@@ -1228,6 +2209,16 @@ __attribute__((export_name("tp_decompress"))) int tp_decompress(const u8* file, 
     unpacked = Image();
     return unpack(b, unpacked) ? 1 : 0;
 }
+__attribute__((export_name("tp_jpeg_pack"))) size_t tp_jpeg_pack(const u8* file, size_t size) {
+    std::vector<u8> input(file, file + size);
+    packed.clear();
+    return jpeg_pack(input, packed) ? 0 : packed.size();
+}
+__attribute__((export_name("tp_jpeg_unpack"))) size_t tp_jpeg_unpack(const u8* file, size_t size) {
+    std::vector<u8> input(file, file + size);
+    packed.clear();
+    return jpeg_unpack(input, packed) ? 0 : packed.size();
+}
 __attribute__((export_name("tp_pixels"))) const u8* tp_pixels() { return unpacked.data.data(); }
 __attribute__((export_name("tp_width"))) int tp_width() { return unpacked.w; }
 __attribute__((export_name("tp_height"))) int tp_height() { return unpacked.h; }
@@ -1236,7 +2227,29 @@ __attribute__((export_name("tp_channels"))) int tp_channels() { return unpacked.
 #else
 int main(int argc, char** argv) {
     if (argc < 4 || argc > 5) { fprintf(stderr, "usage: truepix-core c|d input output [tiles per side]\n"); return 1; }
-    if (argv[1][0] == 'c') {
+    std::vector<u8> input;
+    {
+        FILE* f = fopen(argv[2], "rb");
+        if (!f) { perror(argv[2]); return 1; }
+        u8 chunk[65536];
+        size_t n;
+        while ((n = fread(chunk, 1, sizeof chunk, f)) > 0) input.insert(input.end(), chunk, chunk + n);
+        fclose(f);
+    }
+    if (argv[1][0] == 'c' && input.size() > 2 && input[0] == 0xFF && input[1] == 0xD8) {
+        std::vector<u8> file;
+        if (const char* problem = jpeg_pack(input, file)) { fprintf(stderr, "%s\n", problem); return 4; }
+        FILE* f = fopen(argv[3], "wb");
+        fwrite(file.data(), 1, file.size(), f);
+        fclose(f);
+        printf("%zu jpeg\n", file.size());
+    } else if (argv[1][0] == 'd' && input.size() > 4 && !memcmp(input.data(), JPEG_MAGIC, 4)) {
+        std::vector<u8> rebuilt;
+        if (const char* problem = jpeg_unpack(input, rebuilt)) { fprintf(stderr, "%s\n", problem); return 2; }
+        FILE* f = fopen(argv[3], "wb");
+        fwrite(rebuilt.data(), 1, rebuilt.size(), f);
+        fclose(f);
+    } else if (argv[1][0] == 'c') {
         Image im = read_pnm(argv[2]);
         int side = argc == 5 ? atoi(argv[4]) : default_side(im);
         if (side < 1 || side > 16) { fprintf(stderr, "tiles per side must be 1 to 16\n"); return 1; }
@@ -1249,14 +2262,8 @@ int main(int argc, char** argv) {
         for (size_t t = 0; t < modes.size(); t++) printf("%s%d", t ? "," : " ", modes[t]);
         printf("\n");
     } else {
-        FILE* f = fopen(argv[2], "rb");
-        std::vector<u8> b;
-        u8 chunk[65536];
-        size_t n;
-        while ((n = fread(chunk, 1, sizeof chunk, f)) > 0) b.insert(b.end(), chunk, chunk + n);
-        fclose(f);
         Image im;
-        if (const char* problem = unpack(b, im)) { fprintf(stderr, "%s\n", problem); return 2; }
+        if (const char* problem = unpack(input, im)) { fprintf(stderr, "%s\n", problem); return 2; }
         write_pnm(argv[3], im);
     }
     return 0;

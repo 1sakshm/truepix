@@ -366,7 +366,7 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
   <div class="inner" data-arm>
     <span class="tag">Runs on your device. Nothing is uploaded.</span>
     <h2>Try it on your own image</h2>
-    <p>This is the real codec, compiled to WebAssembly, and it writes the same files as the desktop build. Drop an image to compress it and check every pixel, or drop a Truepix file to rebuild the image.</p>
+    <p>This is the real codec, compiled to WebAssembly, and it writes the same files as the desktop build. Drop an image to compress it and check the result, or drop a Truepix file to rebuild the original.</p>
     <div class="drop" id="drop">
       <strong>Drop an image or a .tpix file</strong>
       <div class="choices">
@@ -374,7 +374,7 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
         <button class="button" id="sample" type="button">Try the sample image</button>
       </div>
       <input id="file" type="file" hidden accept="image/png,image/jpeg,image/webp,image/bmp,.tpix,.zip">
-      <span class="small">PNG, JPEG, WebP or BMP, up to 16 megapixels. Allow about 30 seconds per megapixel on an 8-core laptop, including the pixel check.</span>
+      <span class="small">PNG, JPEG, WebP or BMP, up to 16 megapixels. JPEGs come back byte for byte. Allow about 30 seconds per megapixel on an 8-core laptop, and less for JPEGs.</span>
     </div>
     <div class="work" id="work" role="status" hidden>
       <span id="work-text">Starting…</span>
@@ -843,6 +843,18 @@ onmessage = async ({ data }) => {
       let crc = 0;
       if (data.pixels) { const at = put(w, data.pixels); crc = w.tp_crc(at, data.pixels.length) >>> 0; w.tp_free(at); }
       postMessage({ result: { boxes, crc } });
+    } else if (data.job === "jpeg") {
+      const at = put(w, data.file), size = w.tp_jpeg_pack(at, data.file.length);
+      w.tp_free(at);
+      if (!size) { postMessage({ result: { refused: true } }); return; }
+      const packed = take(w, w.tp_packed(), size), back = put(w, packed), rebuilt = w.tp_jpeg_unpack(back, size);
+      const copy = take(w, w.tp_packed(), rebuilt);
+      const exact = copy.length === data.file.length && copy.every((v, i) => v === data.file[i]);
+      postMessage({ result: { packed, exact } });
+    } else if (data.job === "unjpeg") {
+      const at = put(w, data.file), size = w.tp_jpeg_unpack(at, data.file.length);
+      if (!size) throw new Error("damaged");
+      postMessage({ result: take(w, w.tp_packed(), size) });
     } else if (data.job === "encode") {
       const at = put(w, data.pixels), size = w.tp_encode_tile(at, data.width, data.height, data.channels);
       postMessage({ result: take(w, w.tp_packed(), size) });
@@ -1047,6 +1059,35 @@ const tool = (() => {
     return { pixels, width, height, channels };
   }
 
+  // Tick totals for JPEGs are blocks, so the progress bar works from the picture's size.
+  async function preview(bytes) {
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/jpeg" }));
+    box.image.width = bitmap.width; box.image.height = bitmap.height;
+    box.image.getContext("2d").drawImage(bitmap, 0, 0);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  }
+
+  async function jpegJob(file, note) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const size = await preview(bytes), blocks = size.width * size.height / 64 * 1.5;
+    const tick = progress(blocks * 2);
+    let seen = 0;
+    const [result] = await pool([{ job: "jpeg", file: bytes }], (n) => { seen += n; tick(n, seen < blocks ? "Compressing" : "Checking every byte"); });
+    if (result.refused) return false;
+    box.out.hidden = false;
+    const change = (result.packed.length - bytes.length) / bytes.length * 100;
+    fact("Your JPEG", formatSize(bytes.length));
+    fact("Truepix file", formatSize(result.packed.length));
+    fact("Change", `${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
+    fact("Rebuilt file", result.exact ? "Identical" : "Mismatch");
+    box.verdict.textContent = "Your original JPEG comes back byte for byte, with no further quality loss.";
+    box.save.textContent = "Save Truepix file";
+    offer = { name: stem(file.name) + ".tpix", tpix: result.packed };
+    return true;
+  }
+
   function explain(error) {
     if (error.message === "cancelled") return "Cancelled.";
     if (error.message === "damaged") return "This Truepix file is damaged or from another version.";
@@ -1071,9 +1112,31 @@ const tool = (() => {
       try {
         wasm ??= await fetch("truepix.wasm").then((r) => { if (!r.ok) throw new Error(); return r.arrayBuffer(); });
       } catch { throw new Error("The codec couldn't load. Check your connection and try again."); }
+      const head = given ? new Uint8Array(0) : new Uint8Array(await file.slice(0, 2).arrayBuffer());
+      const isJpeg = head[0] === 0xff && head[1] === 0xd8;
+      if (isJpeg && await jpegJob(file)) {
+        box.work.hidden = true; busy = false;
+        return;
+      }
       if (!given && /\.(tpix|zip)$/i.test(file.name)) {
         const bytes = unwrap(new Uint8Array(await file.arrayBuffer())).slice();
-        if (String.fromCharCode(...bytes.subarray(0, 4)) !== "TPX1") throw new Error("This isn't a Truepix file.");
+        const magic = String.fromCharCode(...bytes.subarray(0, 4));
+        if (magic === "TPJ1") {
+          box.text.textContent = "Rebuilding your JPEG…";
+          const [rebuilt] = await pool([{ job: "unjpeg", file: bytes }]);
+          const size = await preview(rebuilt);
+          box.out.hidden = false;
+          fact("Truepix file", formatSize(bytes.length));
+          fact("JPEG", formatSize(rebuilt.length));
+          fact("Image", `${size.width} × ${size.height}`);
+          fact("Checksum", "Match");
+          box.verdict.textContent = "Your original JPEG is back, byte for byte. The checksum stored in the file matches.";
+          box.save.textContent = "Save JPEG";
+          offer = { name: stem(file.name) + ".jpg", blob: async () => new Blob([rebuilt], { type: "image/jpeg" }) };
+          box.work.hidden = true; busy = false;
+          return;
+        }
+        if (magic !== "TPX1") throw new Error("This isn't a Truepix file.");
         const view = new DataView(bytes.buffer), total = view.getUint32(4, true) * view.getUint32(8, true) * bytes[12];
         const tick = progress(total), result = await rebuild(bytes, (n) => tick(n, "Rebuilding"));
         const [{ crc }] = await pool([{ job: "plan", width: 1, height: 1, side: 1, pixels: result.pixels }]);
@@ -1101,8 +1164,8 @@ const tool = (() => {
         fact("Truepix file", formatSize(size));
         fact("Change", `${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
         fact("Every pixel", exact ? "Exact" : "Mismatch");
-        box.verdict.textContent = /jpe?g/i.test(file?.type ?? "")
-          ? "JPEG already threw detail away, so this stores the pixels your browser decoded from it. For JPEGs, this file can come out larger."
+        box.verdict.textContent = isJpeg
+          ? "This unusual JPEG can't be rebuilt exactly, so Truepix stored its pixels instead. This file can come out larger than the JPEG."
           : `Compressed and rebuilt in ${seconds(performance.now() - begun)} on this device, then compared pixel by pixel.`;
         box.save.textContent = "Save Truepix file";
         offer = { name: (given ? "sample" : stem(file.name)) + ".tpix", tpix: packed };

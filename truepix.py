@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 MAGIC = b"TPX1"
+JPEG_MAGIC = b"TPJ1"
 HEADER = struct.Struct("<4sIIBBI")  # magic, width, height, channels, tiles per side, CRC-32
 MODES = ("L", "LA", "RGB", "RGBA")
 
@@ -32,6 +33,25 @@ def run_core(*arguments):
     done = subprocess.run([str(core_binary()), *map(str, arguments)], capture_output=True, text=True)
     if done.returncode:
         raise TruepixError(f"the codec failed: {done.stderr.strip()}")
+
+
+def is_jpeg(path):
+    with open(path, "rb") as file:
+        return file.read(2) == b"\xff\xd8"
+
+
+def compress_jpeg(path, output):
+    """Keep a JPEG's own data and rebuild the file exactly. False if this JPEG can't be rebuilt."""
+    try:
+        run_core("c", path, output)
+    except TruepixError:
+        return False
+    with tempfile.TemporaryDirectory() as folder:
+        back = Path(folder) / "back.jpg"
+        run_core("d", output, back)
+        if back.read_bytes() != Path(path).read_bytes():
+            raise TruepixError("the check failed, so nothing was written")
+    return True
 
 
 def load_pixels(path):
@@ -88,21 +108,32 @@ def main(argv=None):
     compress.add_argument("input", type=Path)
     compress.add_argument("-o", "--output", type=Path)
     compress.add_argument("--verify", action="store_true", help="decode the result and compare every pixel")
-    restore = actions.add_parser("decompress", help="turn a .tpix file into a PNG")
+    restore = actions.add_parser("decompress", help="turn a .tpix file back into its PNG or JPEG")
     restore.add_argument("input", type=Path)
     restore.add_argument("-o", "--output", type=Path)
     args = parser.parse_args(argv)
-    output = args.output or args.input.with_suffix(".tpix" if args.action == "compress" else ".png")
     try:
+        if args.action == "compress":
+            output = args.output or args.input.with_suffix(".tpix")
+        else:
+            is_packed_jpeg = args.input.is_file() and args.input.read_bytes()[:4] == JPEG_MAGIC
+            output = args.output or args.input.with_suffix(".jpg" if is_packed_jpeg else ".png")
         if output.exists():
             raise TruepixError(f"{output} already exists")
-        if args.action == "compress":
+        if args.action == "compress" and args.input.is_file() and is_jpeg(args.input) and compress_jpeg(args.input, output):
+            print(f"{args.input} -> {output}: {args.input.stat().st_size:,} -> {output.stat().st_size:,} bytes, original rebuilt byte for byte")
+        elif args.action == "compress":
+            if args.input.is_file() and is_jpeg(args.input):
+                print("note: this JPEG can't be rebuilt exactly, so only its pixels will be stored", file=sys.stderr)
             pixels = load_pixels(args.input)
             compress_pixels(pixels, output)
             if args.verify and not np.array_equal(decompress_pixels(output), pixels):
                 output.unlink()
                 raise TruepixError("the check failed, so nothing was written")
             print(f"{args.input} -> {output}: {args.input.stat().st_size:,} -> {output.stat().st_size:,} bytes")
+        elif is_packed_jpeg:
+            run_core("d", args.input, output)
+            print(f"{args.input} -> {output}")
         else:
             save_png(decompress_pixels(args.input), output)
             print(f"{args.input} -> {output}")
