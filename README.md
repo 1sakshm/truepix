@@ -34,7 +34,7 @@ a codec stored somewhere else.
 ## Limits
 
 - **Speed:** a 3-megapixel photo takes about 12 seconds to encode and 7 to decode on an 8-core
-  laptop, about 90 times slower to decode than JPEG XL. It suits archives, not web pages. The
+  laptop, about 100 times slower to decode than JPEG XL. It suits archives, not web pages. The
   paper's timings came from an earlier build (17 and 11 seconds) that wrote the same files.
 - **Pixels only:** colour profiles and other metadata are not stored.
 - **Formats:** 8-bit grey or RGB, with or without alpha. Other images are refused, not converted.

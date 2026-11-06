@@ -61,7 +61,7 @@
 \begin{minipage}{0.9\textwidth}
 \small
 \textbf{Abstract.}
-A general-purpose compressor, paq8px, is \kpaqvsjxl\% smaller than JPEG~XL on the Kodak benchmark, far beyond what its modelling advantage achieves elsewhere. We show why. About nine tenths of the gap between paq8px and our predictive codec lies in colour rather than brightness, and the cause is historical: the Kodak images are Photo~CD scans whose RGB values are a stretched integer lattice of PhotoYCC samples. A fixed-point inverse places \kshare\% of pixels on a lattice covering 12.8\% of colours, with gains matching Kodak's published constants. Exploiting it cuts our Kodak total by \kdrop\%, to \kfinalbpp\ bits per pixel. Because that gain says nothing about other photographs, we then generalise: hashed contexts over exact colour differences learn such structure with no knowledge of its origin. The resulting codec, Truepix, combines online least squares, parametric models and logistic mixing. On 24 unseen DIV2K images it is \setCtengain\% smaller in total than JPEG~XL at effort~10 and smaller on all 24 (Wilcoxon $p=1.2\times10^{-7}$; geometric-mean lead \cgeo\%, 95\% CI [\cgeolo, \cgeohi]). Two earlier hold-out sets gave leads of \setAtengain\% and \setBtengain\%. Truepix uses floating point yet is reproducible: seven builds across compilers, 32- and 64-bit x86 and WebAssembly wrote byte-identical files, and all \matrixdecodes\ cross-build decodes were exact. It remains far slower than JPEG~XL, and paq8px still compresses more.
+A general-purpose compressor, paq8px, is \kpaqvsjxl\% smaller than JPEG~XL on the Kodak benchmark, far beyond what its modelling advantage achieves elsewhere. We show why. About nine tenths of the gap between paq8px and our predictive codec lies in colour rather than brightness, and the cause is historical: the Kodak images are Photo~CD scans whose RGB values are a stretched integer lattice of PhotoYCC samples. A fixed-point inverse places \kshare\% of pixels on a lattice covering 12.8\% of colours, with gains matching Kodak's published constants. Exploiting it cuts our Kodak total by \kdrop\%, to \kfinalbpp\ bits per pixel. Because that gain says nothing about other photographs, we then generalise: hashed contexts over exact colour differences learn such structure with no knowledge of its origin. The resulting codec, Truepix, combines online least squares, parametric models and logistic mixing. On 24 unseen DIV2K images, JPEG~XL at effort~10 is \setCtengain\% larger in total, and Truepix is smaller on all 24 (Wilcoxon $p=1.2\times10^{-7}$; geometric-mean lead \cgeo\%, 95\% CI [\cgeolo, \cgeohi]). Two earlier hold-out sets gave leads of \setAtengain\% and \setBtengain\%. Truepix uses floating point yet is reproducible: seven builds across compilers, 32- and 64-bit x86 and WebAssembly wrote byte-identical files, and all \matrixdecodes\ cross-build decodes were exact. A later byte-identical rewrite cut decode time by \fastdecsave\%, but Truepix remains far slower than JPEG~XL, and paq8px still compresses more.
 \end{minipage}
 \end{center}
 \vspace{4mm}
@@ -478,11 +478,11 @@ paq8px, for reference & 2,566,223 & 5,267,444\\
 
 \subsection{Speed}
 
-Table~\ref{tab:speed} and Figure~\ref{fig:speed} give timing on five Set~C images. Encoding with tiles takes about \sppxmtwoenc\,s, between JPEG~XL at effort~9 (\spjxlnineenc\,s) and effort~10 (\spjxltenenc\,s). Decoding is Truepix's real weakness: \sppxmtwodec\,s against \spjxlninedec\,s, about \decodegap\ times slower, because a symmetric model does all its work again. Truepix suits archiving, not web delivery. By calculation, the tables of a tiled image take about 265\,MB.
+Table~\ref{tab:speed} and Figure~\ref{fig:speed} give timing for the scored build on five Set~C images. Encoding with tiles takes about \sppxmtwoenc\,s, between JPEG~XL at effort~9 (\spjxlnineenc\,s) and effort~10 (\spjxltenenc\,s). Decoding is Truepix's real weakness: \sppxmtwodec\,s against \spjxlninedec\,s, about \decodegap\ times slower, because a symmetric model does all its work again. Truepix suits archiving, not web delivery. By calculation, the tables of a tiled image take about 265\,MB.
 
 \begin{table}[t]
 \centering\small
-\caption{Mean seconds per image on five Set~C images (2.8\,MP on average), with total size against Truepix with $2\times2$ tiles.}
+\caption{Mean seconds per image for the scored build on five Set~C images (2.8\,MP on average), with total size against Truepix with $2\times2$ tiles.}
 \label{tab:speed}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
@@ -507,6 +507,32 @@ Method & Encode & Decode & Size\\
 \label{fig:speed}
 \end{figure}
 
+\subsection{Faster decoding without changing a byte}
+\label{sec:faster}
+
+After the hold-out tests we looked for speed that leaves every file unchanged, so that all results above still apply. Cycle counters put about half of decode time in three places: the parametric inputs, the least-squares update and the least-squares solve. The compiler had not vectorised the update, because possible pointer aliasing blocked it.
+
+The constraint is that each value must receive the same operations in the same order. Removing the aliasing vectorises the update directly. The row form of Cholesky is an order-sensitive sum that cannot run in lanes, but the column form gives each entry the same subtractions in the same order, so it vectorises with identical bits. The seven parametric inputs and four of the five mixer squashes run in AVX2 lanes that repeat the scalar operations, with no fused multiplies. Decisions in one sample also share interval edges, so their logistic values are cached. Smaller changes replace library rounding and a linear quantiser search with exact equivalents, and prefetch the counters.
+
+\begin{table}[t]
+\centering\small
+\caption{Decode time saved by the bit-exact changes, cumulative, on one thread, for a 0.48\,MP crop over three alternating runs.}
+\label{tab:faster}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Change & Saved\\
+\midrule
+Least squares, rounding, quantiser, regressors & 16\%\\
+AVX2 lanes, batched squashes, prefetch & 34\%\\
+Cached interval edges & 37\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On the same five images, in alternating runs with tiles on all cores, decoding fell from \fastdecold\ to \fastdecnew\,s and encoding from \fastencold\ to \fastencnew\,s, saving \fastdecsave\% and \fastencsave\% (Table~\ref{tab:faster} shows the steps). Compared with the earlier JPEG~XL timing, decoding is now about \fastgap\ times slower instead of \decodegap. Plain builds without AVX2 keep only the compiler-level gains, which we did not measure. Profile-guided builds and CPU-specific tuning gave no gain.
+
+All five files were identical to the old build's, and all 20 decodes were exact. We reran the seven-build check on the new source, with Clang and the unoptimised build also taking the AVX2 path: all \fastfiles\ files matched the old build byte for byte, and all \fastdecodes\ cross-build decodes were exact. The new source has not been run on ARM.
+
 \section{Discussion}
 
 \paragraph{What is and is not shown.}
@@ -516,14 +542,14 @@ Our claim is narrow: among the practical codecs tested, on these DIV2K images, T
 The Photo~CD form was fitted to Kodak itself, not to independent Photo~CD scans, and the rest of its misses are unexplained. Our literature search was limited. Truepix handles only 8-bit images, and cannot reproduce JPEG files byte for byte, for which JPEG~XL transcoding remains the right tool.
 
 \paragraph{Future work.}
-Decode speed is the priority, likely through cheaper counters and fewer mixer inputs. Chroma subsampling is visible in mode~2's position-dependent costs (\plcyA, \plcyB, \plcyC\ and \plcyD\ bits per sample in the second plane, by position), but is not yet explicitly modelled. The recurring DIV2K lattices need an explanation, and the remaining green gap to paq8px is the largest open compression question. ARM execution must also be tested.
+Decode speed remains the priority. Section~\ref{sec:faster} used up the changes that leave files alone, so further gains need a cheaper model, such as cheaper counters and fewer mixer inputs. Chroma subsampling is visible in mode~2's position-dependent costs (\plcyA, \plcyB, \plcyC\ and \plcyD\ bits per sample in the second plane, by position), but is not yet explicitly modelled. The recurring DIV2K lattices need an explanation, and the remaining green gap to paq8px is the largest open compression question. ARM execution must also be tested.
 
 \section{Conclusion}
 
 The surprising strength of a slow compressor on a famous benchmark was not a matter of better modelling alone. It was the benchmark's history: an integer colour lattice from Photo~CD, recoverable from pixels and matching constants Kodak published decades ago. Turning that observation into exact-difference contexts yields a practical gain with no history detection at all. Truepix's lead over JPEG~XL held across three unseen sets, reproducibly across seven builds, at the stated cost in decode time.
 
 \paragraph{Reproducibility.}
-Results were measured as PXM, the name in the raw files. The release differs from the scored build only in its name and file marker: on eight test images, its files matched byte for byte after that marker. The raw results, the script behind this paper's numbers and plots, and the measurement scripts are in \texttt{paper/}. Hard-coded development figures in Tables~\ref{tab:ablation} and~\ref{tab:planes} and Figure~\ref{fig:gap} come from the session logs. Independent replication has not been attempted.
+Results were measured as PXM, the name in the raw files. The release differs from the scored build in its name, its file marker and the speed changes of Section~\ref{sec:faster}. On eight test images, the renamed build's files matched byte for byte after that marker. The raw results, the script behind this paper's numbers and plots, and the measurement scripts are in \texttt{paper/}. Hard-coded development figures in Tables~\ref{tab:ablation} and~\ref{tab:planes} and Figure~\ref{fig:gap} come from the session logs. Independent replication has not been attempted.
 
 \paragraph{Acknowledgement.}
 Implementation, experiments and drafting were carried out with Claude Code, an AI coding assistant.

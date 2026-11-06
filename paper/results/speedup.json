@@ -1,0 +1,35 @@
+{
+ "note": "Decoder speedup measured after the hold-out tests. Files are byte-identical to the scored build.",
+ "race": {
+  "images": 5,
+  "identical_files": 5,
+  "exact_decodes": 20,
+  "of": 20,
+  "encode_old": 16.64968235999986,
+  "encode_new": 12.006839840000612,
+  "decode_old": 10.856318229998578,
+  "decode_new": 7.366487289998622
+ },
+ "steps_saved_percent": {
+  "least squares and replacements": 16,
+  "plus AVX2 lanes and prefetch": 34,
+  "plus edge cache": 37
+ },
+ "matrix": {
+  "builds": [
+   "GCC AVX2",
+   "GCC FMA",
+   "GCC SSE2",
+   "GCC -O0",
+   "Clang x64",
+   "Clang x86",
+   "WebAssembly"
+  ],
+  "files": 35,
+  "match_old_baseline": 35,
+  "decodes": 245,
+  "exact": 245,
+  "failed": [],
+  "mismatched": []
+ }
+}
