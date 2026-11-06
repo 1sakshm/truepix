@@ -1,0 +1,104 @@
+[
+ {
+  "stem": "astronaut",
+  "size": 308309,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "brick",
+  "size": 79346,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "camera",
+  "size": 115570,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "cell",
+  "size": 27782,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "chelsea",
+  "size": 102358,
+  "exact": true,
+  "mode": "1"
+ },
+ {
+  "stem": "coffee",
+  "size": 311102,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "coins",
+  "size": 65057,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "color",
+  "size": 30158,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "grass",
+  "size": 205830,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "gravel",
+  "size": 177747,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "ihc",
+  "size": 187570,
+  "exact": true,
+  "mode": "1"
+ },
+ {
+  "stem": "logo",
+  "size": 77271,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "logo2",
+  "size": 11002,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "moon",
+  "size": 27638,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "motorcycle_left",
+  "size": 451612,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "page",
+  "size": 35561,
+  "exact": true,
+  "mode": "0"
+ },
+ {
+  "stem": "text",
+  "size": 37860,
+  "exact": true,
+  "mode": "0"
+ }
+]

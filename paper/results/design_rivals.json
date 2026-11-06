@@ -1,0 +1,2944 @@
+{
+ "results": {
+  "astronaut": {
+   "ORIGINAL": {
+    "size": 791555,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 324667,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 323318,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 321274,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 319931,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 375639,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 354102,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 387828,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 371899,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 407928,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 326438,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 424930,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 510161,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 478754,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 477574,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 449298,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 419599,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 409700,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 435075,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 387575,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 85861,
+    "exact": false,
+    "psnr": 38.7
+   },
+   "WebP q90": {
+    "size": 49536,
+    "exact": false,
+    "psnr": 37.6
+   },
+   "AVIF q90": {
+    "size": 68659,
+    "exact": false,
+    "psnr": 38.7
+   },
+   "HEIC q90": {
+    "size": 161700,
+    "exact": false,
+    "psnr": 39.4
+   },
+   "JPEG XL q90": {
+    "size": 51432,
+    "exact": false,
+    "psnr": 37.0
+   }
+  },
+  "brick": {
+   "ORIGINAL": {
+    "size": 106634,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 80616,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 80084,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 80403,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 79871,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 85291,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 99020,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 114132,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 98001,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 106040,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 96754,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 106634,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 284122,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 144642,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 147013,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 106687,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 107455,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 106700,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 106646,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 106639,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 42615,
+    "exact": false,
+    "psnr": 45.3
+   },
+   "WebP q90": {
+    "size": 21660,
+    "exact": false,
+    "psnr": 44.1
+   },
+   "AVIF q90": {
+    "size": 30885,
+    "exact": false,
+    "psnr": 48.4
+   },
+   "HEIC q90": {
+    "size": 99314,
+    "exact": false,
+    "psnr": 61.9
+   },
+   "JPEG XL q90": {
+    "size": 31698,
+    "exact": false,
+    "psnr": 46.2
+   }
+  },
+  "camera": {
+   "ORIGINAL": {
+    "size": 139512,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 117727,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 116907,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 117469,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 116650,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 123540,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 129683,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 142510,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 131638,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 131768,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 123720,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 139500,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 284297,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 152259,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 152411,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 139575,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 140428,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 139580,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 139527,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 139517,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 59366,
+    "exact": false,
+    "psnr": 40.3
+   },
+   "WebP q90": {
+    "size": 46060,
+    "exact": false,
+    "psnr": 43.2
+   },
+   "AVIF q90": {
+    "size": 60189,
+    "exact": false,
+    "psnr": 47.5
+   },
+   "HEIC q90": {
+    "size": 133298,
+    "exact": false,
+    "psnr": 62.2
+   },
+   "JPEG XL q90": {
+    "size": 45704,
+    "exact": false,
+    "psnr": 41.7
+   }
+  },
+  "cell": {
+   "ORIGINAL": {
+    "size": 74183,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 41203,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 37319,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 41028,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 37152,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 61035,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 60129,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 105034,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 73299,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 81131,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 67580,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 73585,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 270568,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 80594,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 87713,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 74204,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 74813,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 74248,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 74195,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 74188,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 24372,
+    "exact": false,
+    "psnr": 54.3
+   },
+   "WebP q90": {
+    "size": 12106,
+    "exact": false,
+    "psnr": 48.6
+   },
+   "AVIF q90": {
+    "size": 9284,
+    "exact": false,
+    "psnr": 55.0
+   },
+   "HEIC q90": {
+    "size": 67576,
+    "exact": false,
+    "psnr": 66.8
+   },
+   "JPEG XL q90": {
+    "size": 9146,
+    "exact": false,
+    "psnr": 53.2
+   }
+  },
+  "chelsea": {
+   "ORIGINAL": {
+    "size": 240512,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 143293,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 143019,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 140083,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 139825,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 202492,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 161130,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 179450,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 177973,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 238885,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 153422,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 221533,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 238869,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 227535,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 234324,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 238641,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 240346,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 239056,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 238487,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 238176,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 43013,
+    "exact": false,
+    "psnr": 40.1
+   },
+   "WebP q90": {
+    "size": 28230,
+    "exact": false,
+    "psnr": 39.9
+   },
+   "AVIF q90": {
+    "size": 38507,
+    "exact": false,
+    "psnr": 42.1
+   },
+   "HEIC q90": {
+    "size": 91058,
+    "exact": false,
+    "psnr": 45.6
+   },
+   "JPEG XL q90": {
+    "size": 27389,
+    "exact": false,
+    "psnr": 39.3
+   }
+  },
+  "china": {
+   "ORIGINAL": {
+    "size": 196653,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 170436,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 170560,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 169819,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 169952,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 461862,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 374245,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 429688,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 429784,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 512601,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 362524,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 483810,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 564615,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 497744,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 500502,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 195653,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 196505,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 195928,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 195598,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 196658,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 123253,
+    "exact": false,
+    "psnr": 36.5
+   },
+   "WebP q90": {
+    "size": 88766,
+    "exact": false,
+    "psnr": 35.6
+   },
+   "AVIF q90": {
+    "size": 106705,
+    "exact": false,
+    "psnr": 36.4
+   },
+   "HEIC q90": {
+    "size": 199573,
+    "exact": false,
+    "psnr": 37.4
+   },
+   "JPEG XL q90": {
+    "size": 79315,
+    "exact": false,
+    "psnr": 34.2
+   }
+  },
+  "coffee": {
+   "ORIGINAL": {
+    "size": 466706,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 334189,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 331587,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 333697,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 331095,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 388935,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 356911,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 383569,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 379367,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 414316,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 336030,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 441801,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 505136,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 467269,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 467758,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 466869,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 458917,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 466788,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 466727,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 466711,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 93966,
+    "exact": false,
+    "psnr": 37.2
+   },
+   "WebP q90": {
+    "size": 60088,
+    "exact": false,
+    "psnr": 36.8
+   },
+   "AVIF q90": {
+    "size": 75037,
+    "exact": false,
+    "psnr": 38.2
+   },
+   "HEIC q90": {
+    "size": 176284,
+    "exact": false,
+    "psnr": 38.9
+   },
+   "JPEG XL q90": {
+    "size": 56794,
+    "exact": false,
+    "psnr": 35.4
+   }
+  },
+  "coins": {
+   "ORIGINAL": {
+    "size": 75825,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 67229,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 68681,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 67026,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 68478,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 68493,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 71053,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 75908,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 73032,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 75983,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 67406,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 74906,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 154161,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 81085,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 79828,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 75868,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 76416,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 75888,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 75837,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 75830,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 35155,
+    "exact": false,
+    "psnr": 42.1
+   },
+   "WebP q90": {
+    "size": 29676,
+    "exact": false,
+    "psnr": 42.4
+   },
+   "AVIF q90": {
+    "size": 31041,
+    "exact": false,
+    "psnr": 49.7
+   },
+   "HEIC q90": {
+    "size": 57376,
+    "exact": false,
+    "psnr": 58.6
+   },
+   "JPEG XL q90": {
+    "size": 25957,
+    "exact": false,
+    "psnr": 43.8
+   }
+  },
+  "color": {
+   "ORIGINAL": {
+    "size": 85584,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 43459,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 40852,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 39092,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 36491,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 65132,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 76469,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 116005,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 67818,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 81446,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 57414,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 81698,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 173279,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 71919,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 82632,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 85632,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 86252,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 85648,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 85596,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 85589,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 19571,
+    "exact": false,
+    "psnr": 49.4
+   },
+   "WebP q90": {
+    "size": 5152,
+    "exact": false,
+    "psnr": 45.7
+   },
+   "AVIF q90": {
+    "size": 9760,
+    "exact": false,
+    "psnr": 48.1
+   },
+   "HEIC q90": {
+    "size": 41830,
+    "exact": false,
+    "psnr": 48.6
+   },
+   "JPEG XL q90": {
+    "size": 5183,
+    "exact": false,
+    "psnr": 45.1
+   }
+  },
+  "flower": {
+   "ORIGINAL": {
+    "size": 142987,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 111760,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 111864,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 111511,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 111616,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 291904,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 300108,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 345460,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 309048,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 345096,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 278228,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 347401,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 454175,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 382718,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 388338,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 135780,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 136865,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 135776,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 135528,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 134626,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 67828,
+    "exact": false,
+    "psnr": 39.9
+   },
+   "WebP q90": {
+    "size": 33088,
+    "exact": false,
+    "psnr": 37.7
+   },
+   "AVIF q90": {
+    "size": 47756,
+    "exact": false,
+    "psnr": 38.7
+   },
+   "HEIC q90": {
+    "size": 141911,
+    "exact": false,
+    "psnr": 39.4
+   },
+   "JPEG XL q90": {
+    "size": 37542,
+    "exact": false,
+    "psnr": 37.5
+   }
+  },
+  "grace_hopper": {
+   "ORIGINAL": {
+    "size": 61306,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 53059,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 53125,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 52874,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 52939,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 503927,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 297022,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 366101,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 376454,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 566533,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 290454,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 452018,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 552661,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 493861,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 504557,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 61168,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 61503,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 61372,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 61316,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 60894,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 99088,
+    "exact": false,
+    "psnr": 47.7
+   },
+   "WebP q90": {
+    "size": 73204,
+    "exact": false,
+    "psnr": 40.8
+   },
+   "AVIF q90": {
+    "size": 69108,
+    "exact": false,
+    "psnr": 44.2
+   },
+   "HEIC q90": {
+    "size": 157074,
+    "exact": false,
+    "psnr": 43.6
+   },
+   "JPEG XL q90": {
+    "size": 58404,
+    "exact": false,
+    "psnr": 40.5
+   }
+  },
+  "grass": {
+   "ORIGINAL": {
+    "size": 217893,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 205073,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 206956,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 204725,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 206600,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 209725,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 217580,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 216953,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 237163,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 237321,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 211134,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 214867,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 443856,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 223285,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 222480,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 217981,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 219254,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 217964,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 217908,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 217898,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 133935,
+    "exact": false,
+    "psnr": 51.7
+   },
+   "WebP q90": {
+    "size": 122768,
+    "exact": false,
+    "psnr": 41.7
+   },
+   "AVIF q90": {
+    "size": 121426,
+    "exact": false,
+    "psnr": 45.4
+   },
+   "HEIC q90": {
+    "size": 205147,
+    "exact": false,
+    "psnr": 57.0
+   },
+   "JPEG XL q90": {
+    "size": 99309,
+    "exact": false,
+    "psnr": 40.0
+   }
+  },
+  "gravel": {
+   "ORIGINAL": {
+    "size": 194247,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 176326,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 176616,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 176005,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 176295,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 184381,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 191858,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 194335,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 205942,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 215625,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 187758,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 193341,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 408619,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 210823,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 206756,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 194325,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 195405,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 194316,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 194262,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 194252,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 112667,
+    "exact": false,
+    "psnr": 37.8
+   },
+   "WebP q90": {
+    "size": 98436,
+    "exact": false,
+    "psnr": 41.5
+   },
+   "AVIF q90": {
+    "size": 106970,
+    "exact": false,
+    "psnr": 44.5
+   },
+   "HEIC q90": {
+    "size": 181595,
+    "exact": false,
+    "psnr": 57.3
+   },
+   "JPEG XL q90": {
+    "size": 88482,
+    "exact": false,
+    "psnr": 39.7
+   }
+  },
+  "hubble_deep_field": {
+   "ORIGINAL": {
+    "size": 527940,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 434269,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 434707,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 433670,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 434108,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 1581714,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 1399304,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 1474232,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 1519364,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 1686156,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 1395070,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 1611542,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 1950350,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 1730935,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 1734924,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 517682,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 519573,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 517348,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 517118,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 515009,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 392039,
+    "exact": false,
+    "psnr": 37.1
+   },
+   "WebP q90": {
+    "size": 256462,
+    "exact": false,
+    "psnr": 35.3
+   },
+   "AVIF q90": {
+    "size": 325480,
+    "exact": false,
+    "psnr": 36.4
+   },
+   "HEIC q90": {
+    "size": 694854,
+    "exact": false,
+    "psnr": 37.6
+   },
+   "JPEG XL q90": {
+    "size": 170545,
+    "exact": false,
+    "psnr": 34.3
+   }
+  },
+  "ihc": {
+   "ORIGINAL": {
+    "size": 477916,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 267475,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 267231,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 267055,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 266811,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 459501,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 308384,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 341280,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 375505,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 548909,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 312972,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 467174,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 513435,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 515203,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 528419,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 477606,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 480086,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 478000,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 477937,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 477921,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 109242,
+    "exact": false,
+    "psnr": 40.0
+   },
+   "WebP q90": {
+    "size": 77038,
+    "exact": false,
+    "psnr": 39.8
+   },
+   "AVIF q90": {
+    "size": 91234,
+    "exact": false,
+    "psnr": 42.9
+   },
+   "HEIC q90": {
+    "size": 192900,
+    "exact": false,
+    "psnr": 45.3
+   },
+   "JPEG XL q90": {
+    "size": 67832,
+    "exact": false,
+    "psnr": 38.7
+   }
+  },
+  "logo": {
+   "ORIGINAL": {
+    "size": 179723,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 100369,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 97890,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 100130,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 97659,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 138784,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 166010,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 250016,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 155367,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 103674,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 168447,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 194363,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 181198,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 189449,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 168805,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 101059,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 120708,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 141438,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 127949,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 55136,
+    "exact": false,
+    "psnr": 41.2
+   },
+   "WebP q90": {
+    "size": 24392,
+    "exact": false,
+    "psnr": 38.5
+   },
+   "AVIF q90": {
+    "size": 25881,
+    "exact": false,
+    "psnr": 39.4
+   },
+   "HEIC q90": {
+    "size": 86221,
+    "exact": false,
+    "psnr": 38.5
+   },
+   "JPEG XL q90": {
+    "size": 30104,
+    "exact": false,
+    "psnr": 40.8
+   }
+  },
+  "logo2": {
+   "ORIGINAL": {
+    "size": 22279,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 13374,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 11420,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 13234,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 11279,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 26294,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 56536,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 86658,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 27497,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 28653,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 11052,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 21681,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 23906,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 23992,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 21722,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 16783,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 11995,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 12432,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 14381,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 13026,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 22231,
+    "exact": false,
+    "psnr": 38.2
+   },
+   "WebP q90": {
+    "size": 11378,
+    "exact": false,
+    "psnr": 18.0
+   },
+   "AVIF q90": {
+    "size": 9713,
+    "exact": false,
+    "psnr": 37.0
+   },
+   "HEIC q90": {
+    "size": 25166,
+    "exact": false,
+    "psnr": 36.8
+   },
+   "JPEG XL q90": {
+    "size": 14560,
+    "exact": false,
+    "psnr": 13.5
+   }
+  },
+  "moon": {
+   "ORIGINAL": {
+    "size": 50177,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 29664,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 29358,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 29506,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 29200,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 56256,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 90538,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 96831,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 38459,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 100720,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 42650,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 43475,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 219180,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 46913,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 47996,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 49565,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 47169,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 41080,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 44812,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 42910,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 31989,
+    "exact": false,
+    "psnr": 46.6
+   },
+   "WebP q90": {
+    "size": 15950,
+    "exact": false,
+    "psnr": 45.6
+   },
+   "AVIF q90": {
+    "size": 31497,
+    "exact": false,
+    "psnr": 50.9
+   },
+   "HEIC q90": {
+    "size": 95215,
+    "exact": false,
+    "psnr": 70.9
+   },
+   "JPEG XL q90": {
+    "size": 23646,
+    "exact": false,
+    "psnr": 47.9
+   }
+  },
+  "motorcycle_left": {
+   "ORIGINAL": {
+    "size": 644701,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 469762,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 469208,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 469117,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 468564,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 579932,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 514568,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 571590,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 565357,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 662422,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 494702,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 637319,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 753416,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 710381,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 714090,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 644919,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 645270,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 644676,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 644725,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 644706,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 150257,
+    "exact": false,
+    "psnr": 38.0
+   },
+   "WebP q90": {
+    "size": 93210,
+    "exact": false,
+    "psnr": 36.5
+   },
+   "AVIF q90": {
+    "size": 110365,
+    "exact": false,
+    "psnr": 37.4
+   },
+   "HEIC q90": {
+    "size": 253676,
+    "exact": false,
+    "psnr": 37.9
+   },
+   "JPEG XL q90": {
+    "size": 99787,
+    "exact": false,
+    "psnr": 36.8
+   }
+  },
+  "page": {
+   "ORIGINAL": {
+    "size": 47679,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 38803,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 39477,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 37529,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 38205,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 39564,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 41965,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 47434,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 43943,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 47340,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 38944,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 43191,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 98725,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 46556,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 46171,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 47712,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 47691,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 45068,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 47689,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 45864,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 22532,
+    "exact": false,
+    "psnr": 45.8
+   },
+   "WebP q90": {
+    "size": 19118,
+    "exact": false,
+    "psnr": 42.9
+   },
+   "AVIF q90": {
+    "size": 19166,
+    "exact": false,
+    "psnr": 49.3
+   },
+   "HEIC q90": {
+    "size": 34902,
+    "exact": false,
+    "psnr": 58.4
+   },
+   "JPEG XL q90": {
+    "size": 17147,
+    "exact": false,
+    "psnr": 43.0
+   }
+  },
+  "retina": {
+   "ORIGINAL": {
+    "size": 269564,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 220119,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 220529,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 219754,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 220164,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 1203555,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 1110333,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 1588206,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 1342936,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 1679388,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 912144,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 1308867,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 1897762,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 1513859,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 1616301,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 265455,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 265226,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 266296,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 265114,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 264355,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 278245,
+    "exact": false,
+    "psnr": 49.5
+   },
+   "WebP q90": {
+    "size": 98086,
+    "exact": false,
+    "psnr": 44.7
+   },
+   "AVIF q90": {
+    "size": 163957,
+    "exact": false,
+    "psnr": 48.0
+   },
+   "HEIC q90": {
+    "size": 592759,
+    "exact": false,
+    "psnr": 51.2
+   },
+   "JPEG XL q90": {
+    "size": 113578,
+    "exact": false,
+    "psnr": 46.1
+   }
+  },
+  "rocket": {
+   "ORIGINAL": {
+    "size": 112525,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 92706,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 92800,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 92476,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 92570,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 283996,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 279286,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 365850,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 303323,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 328956,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 247038,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 302461,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 419393,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 343314,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 344295,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 112224,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 112741,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 112588,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 112537,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 112530,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 73923,
+    "exact": false,
+    "psnr": 38.4
+   },
+   "WebP q90": {
+    "size": 38576,
+    "exact": false,
+    "psnr": 34.4
+   },
+   "AVIF q90": {
+    "size": 48753,
+    "exact": false,
+    "psnr": 34.7
+   },
+   "HEIC q90": {
+    "size": 124891,
+    "exact": false,
+    "psnr": 35.4
+   },
+   "JPEG XL q90": {
+    "size": 41118,
+    "exact": false,
+    "psnr": 36.0
+   }
+  },
+  "text": {
+   "ORIGINAL": {
+    "size": 42704,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL": {
+    "size": 39053,
+    "exact": true,
+    "psnr": null
+   },
+   "PIXEL --max": {
+    "size": 39079,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e9 (plain)": {
+    "size": 38886,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XL e10 (plain)": {
+    "size": 38911,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG-LS": {
+    "size": 40715,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG 2000": {
+    "size": 42580,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG XR": {
+    "size": 45166,
+    "exact": true,
+    "psnr": null
+   },
+   "AVIF lossless": {
+    "size": 43636,
+    "exact": true,
+    "psnr": null
+   },
+   "HEIC lossless": {
+    "size": 46643,
+    "exact": true,
+    "psnr": null
+   },
+   "WebP lossless": {
+    "size": 41306,
+    "exact": true,
+    "psnr": null
+   },
+   "PNG optimised": {
+    "size": 42639,
+    "exact": true,
+    "psnr": null
+   },
+   "QOI": {
+    "size": 83580,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF deflate": {
+    "size": 46466,
+    "exact": true,
+    "psnr": null
+   },
+   "TIFF zstd": {
+    "size": 44598,
+    "exact": true,
+    "psnr": null
+   },
+   "ZIP/gzip": {
+    "size": 42737,
+    "exact": true,
+    "psnr": null
+   },
+   "bzip2": {
+    "size": 43211,
+    "exact": true,
+    "psnr": null
+   },
+   "7z/LZMA": {
+    "size": 42764,
+    "exact": true,
+    "psnr": null
+   },
+   "Zstandard": {
+    "size": 42714,
+    "exact": true,
+    "psnr": null
+   },
+   "Brotli": {
+    "size": 42708,
+    "exact": true,
+    "psnr": null
+   },
+   "JPEG q90": {
+    "size": 20164,
+    "exact": false,
+    "psnr": 40.9
+   },
+   "WebP q90": {
+    "size": 15418,
+    "exact": false,
+    "psnr": 41.8
+   },
+   "AVIF q90": {
+    "size": 21960,
+    "exact": false,
+    "psnr": 47.2
+   },
+   "HEIC q90": {
+    "size": 44325,
+    "exact": false,
+    "psnr": 62.9
+   },
+   "JPEG XL q90": {
+    "size": 18200,
+    "exact": false,
+    "psnr": 43.2
+   }
+  }
+ },
+ "errors": {
+  "AVIF lossless": [
+   "logo: ValueError: cannot reshape array of size 750000 into shape (500,500,4)"
+  ]
+ },
+ "seconds": {
+  "JPEG XL e9 (plain)": 17.959134817123413,
+  "JPEG XL e10 (plain)": 57.39167070388794,
+  "JPEG-LS": 0.8750722408294678,
+  "JPEG 2000": 2.952324151992798,
+  "JPEG XR": 0.8676176071166992,
+  "AVIF lossless": 48.83766055107117,
+  "HEIC lossless": 8.393427610397339,
+  "WebP lossless": 162.10663509368896,
+  "PNG optimised": 3.7708685398101807,
+  "QOI": 0.18442559242248535,
+  "TIFF deflate": 0.2803370952606201,
+  "TIFF zstd": 0.1796414852142334,
+  "ZIP/gzip": 1.8342375755310059,
+  "bzip2": 4.568627119064331,
+  "7z/LZMA": 10.726054430007935,
+  "Zstandard": 11.022711992263794,
+  "Brotli": 70.04638004302979
+ }
+}

@@ -1,0 +1,19 @@
+[project]
+name = "truepix"
+version = "0.1.0"
+description = "A lossless image codec for archiving, built on context mixing"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pillow"]
+
+[project.scripts]
+truepix = "truepix:main"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = ["truepix.py", "truepix-core.cpp"]

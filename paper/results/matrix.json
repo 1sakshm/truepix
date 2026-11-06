@@ -1,0 +1,28 @@
+{
+ "builds": [
+  "GCC AVX2",
+  "GCC FMA",
+  "GCC SSE2",
+  "GCC -O0",
+  "Clang x64",
+  "Clang x86",
+  "WebAssembly"
+ ],
+ "inputs": [
+  "plain RGB",
+  "Photo CD",
+  "JPEG history",
+  "greyscale",
+  "RGBA"
+ ],
+ "identical": {
+  "small": true,
+  "kodak": true,
+  "jpegish": true,
+  "gray": true,
+  "alpha": true
+ },
+ "decodes": 245,
+ "exact": 245,
+ "failed": []
+}
