@@ -1,12 +1,8 @@
 """Build the Truepix website from the paper's data, so its charts match the results."""
 
-import base64
-import io
 import shutil
 import sys
 from pathlib import Path
-
-from PIL import Image, ImageOps
 
 HERE = Path(__file__).parent
 PAPER = HERE.parent / "paper"
@@ -27,57 +23,31 @@ SPEED = [
     ("FLIF", "14.3", "0.95", "+10.62%"),
     ("WebP lossless", "10.0", "0.07", "+20.27%"),
 ]
-
-
-def mask(name):
-    """Turn a dark-on-white lattice plot into an alpha mask, so CSS can colour it for each theme."""
-    grey = Image.open(PAPER / "data" / name).convert("L")
-    image = Image.new("RGBA", grey.size, (0, 0, 0, 0))
-    image.putalpha(ImageOps.invert(grey))
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
-    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+BUILDS = ["GCC AVX2", "GCC FMA", "GCC SSE2", "GCC -O0", "Clang x64", "Clang x86", "WebAssembly"]
+IMAGES = ["Plain RGB", "Photo CD", "JPEG history", "Greyscale", "RGBA"]
 
 
 def method_rows():
     top = max(bpp for _, bpp, _ in METHODS)
     rows = []
-    for name, bpp, larger in METHODS:
+    for index, (name, bpp, larger) in enumerate(METHODS):
         ours = " ours" if larger is None else ""
-        note = "smallest" if larger is None else f"{larger:.2f}% larger"
+        note = "smallest" if larger is None else f"+{larger:.2f}%"
         rows.append(
-            f'<li class="row{ours}"><span class="row-name">{name}</span>'
-            f'<span class="track"><span class="bar" style="width:{bpp / top * 100:.1f}%"></span></span>'
-            f'<span class="row-bpp">{bpp:.3f}</span><span class="row-note">{note}</span></li>'
+            f'<li class="rank{ours}" style="--w:{bpp / top * 100:.1f}%;--i:{index}"><span class="rank-name">{name}</span>'
+            f'<span class="rank-bar"></span><span class="rank-bpp">{bpp:.3f}</span><span class="rank-note">{note}</span></li>'
         )
     return "\n".join(rows)
 
 
-def savings_chart():
+def savings():
     lines = (PAPER / "data" / "savings.dat").read_text().split("\n")[1:]
-    savings = [(fields[1], float(fields[2])) for fields in map(str.split, filter(None, lines))]
-    width, height, left, bottom, top = 720, 210, 34, 26, 12
-    plot = height - bottom - top
-    scale = plot / 8
-    step = (width - left) / len(savings)
-    parts = []
-    for tick in range(0, 9, 2):
-        y = height - bottom - tick * scale
-        parts.append(f'<line class="grid" x1="{left}" x2="{width}" y1="{y:.1f}" y2="{y:.1f}"/>')
-        parts.append(f'<text class="tick" x="{left - 8}" y="{y + 4:.1f}" text-anchor="end">{tick}%</text>')
-    for index, (stem, saving) in enumerate(savings):
-        x = left + index * step + step * 0.14
-        bar = saving * scale
-        parts.append(
-            f'<rect class="saving" x="{x:.1f}" y="{height - bottom - bar:.1f}" width="{step * 0.72:.1f}" height="{bar:.1f}">'
-            f"<title>Image {stem}: {saving:.2f}% saved</title></rect>"
-        )
-    parts.append(f'<text class="tick" x="{left}" y="{height - 6}">Each bar is one photo, smallest saving first</text>')
-    return (
-        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Truepix saved between '
-        f'{savings[0][1]:.2f} and {savings[-1][1]:.2f} percent against JPEG XL effort 10 on each of 24 photos.">'
-        + "".join(parts) + "</svg>"
-    ), savings
+    values = [(fields[1], float(fields[2])) for fields in map(str.split, filter(None, lines))]
+    bars = "".join(
+        f'<i style="--h:{saving / 8 * 100:.1f}%;--i:{index}" title="Image {stem}: {saving:.2f}% saved"></i>'
+        for index, (stem, saving) in enumerate(values)
+    )
+    return bars, values
 
 
 def speed_rows():
@@ -88,16 +58,24 @@ def speed_rows():
     return "\n".join(rows)
 
 
-chart, savings = savings_chart()
+def wall():
+    groups = []
+    for image in IMAGES:
+        cells = "".join(f'<i style="--i:{index}"></i>' for index in range(len(BUILDS) ** 2))
+        groups.append(f'<figure class="wall-set"><div class="wall-grid">{cells}</div><figcaption>{image}</figcaption></figure>')
+    return "".join(groups)
+
+
+bars, values = savings()
 page = (HERE / "template.html").read_text(encoding="utf-8")
 for key, value in {
-    "@@KODAK@@": mask("lattice_kodak.png"),
-    "@@ORDINARY@@": mask("lattice_ordinary.png"),
     "@@METHODS@@": method_rows(),
-    "@@SAVINGS@@": chart,
-    "@@LOW@@": f"{savings[0][1]:.2f}",
-    "@@HIGH@@": f"{savings[-1][1]:.2f}",
+    "@@SAVINGS@@": bars,
+    "@@LOW@@": f"{values[0][1]:.2f}",
+    "@@HIGH@@": f"{values[-1][1]:.2f}",
     "@@SPEED@@": speed_rows(),
+    "@@WALL@@": wall(),
+    "@@BUILDS@@": ", ".join(BUILDS),
 }.items():
     page = page.replace(key, value)
 assert "@@" not in page
