@@ -244,13 +244,13 @@ footer { padding-block: 24px 40px; border-top: 1px solid var(--line); color: var
   </section>
 
   <section id="speed">
-    <h2>Decoding takes about 141 times longer than JPEG XL</h2>
+    <h2>Decoding takes about 90 times longer than JPEG XL</h2>
     <p>Truepix does all of its modelling again to decode, so opening a photo takes seconds. That rules out web pages and suits archives, where a file is written once and rarely read.</p>
     <div class="scroll">
       <table>
         <thead><tr><th scope="col">Mean per image, 5 photos</th><th scope="col">Encode (s)</th><th scope="col">Decode (s)</th><th scope="col">Total size</th></tr></thead>
         <tbody>
-<tr class="ours"><th scope="row">Truepix</th><td>17.2</td><td>10.59</td><td>+0.00%</td></tr>
+<tr class="ours"><th scope="row">Truepix</th><td>12.0</td><td>7.37</td><td>+0.00%</td></tr>
 <tr><th scope="row">JPEG XL, effort 10</th><td>42.0</td><td>0.08</td><td>+3.71%</td></tr>
 <tr><th scope="row">JPEG XL, effort 9</th><td>1.8</td><td>0.08</td><td>+6.17%</td></tr>
 <tr><th scope="row">FLIF</th><td>14.3</td><td>0.95</td><td>+10.62%</td></tr>
@@ -258,7 +258,7 @@ footer { padding-block: 24px 40px; border-top: 1px solid var(--line); color: var
         </tbody>
       </table>
     </div>
-    <p class="note">Measured on a Ryzen 7 5800HS with 8 cores. Other work may have shared the machine for part of the run. Size is relative to Truepix on the same five photos.</p>
+    <p class="note">Measured on a Ryzen 7 5800HS with 8 cores. Other work may have shared the machine during the rival timings, and those were taken in an earlier run. Size is relative to Truepix on the same five photos. The paper reports an earlier Truepix build that wrote the same files in 17.2 s and read them in 10.59 s.</p>
   </section>
 
   <section id="how">

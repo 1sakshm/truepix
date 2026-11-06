@@ -31,6 +31,10 @@
 #error "Truepix must not be built with -ffast-math"
 #endif
 
+#ifdef __AVX2__
+#include <immintrin.h>
+#endif
+
 static const char MAGIC[] = "TPX1";
 static const int PCD_OR = -255504, PCD_OG = 199153, PCD_OB = -354277;
 
@@ -168,54 +172,71 @@ static LogisticTable cdf;
 struct OLS {
     int n = 0, every = 1, count = 0;
     double lambda = 0.998, nu = 0.001;
-    std::vector<double> cov, vec, w, chol, x, y;
+    std::vector<double> cov, vec, w, chol, x, y, column;
     void init(int size, double lam, int solve_every) {
         n = size; lambda = lam; every = solve_every;
         cov.assign(n * n, 0); vec.assign(n, 0); w.assign(n, 0); chol.assign(n * n, 0); x.assign(n, 0);
+        y.assign(n, 0); column.assign(n, 0);
     }
     double predict() const {
         double s = 0;
-        for (int i = 0; i < n; i++) s += w[i] * x[i];
+        const double* wi = w.data();
+        const double* xi = x.data();
+        for (int i = 0; i < n; i++) s += wi[i] * xi[i];
         return s;
     }
     void update(double target) {
-        double a = 1 - lambda;
-        for (int i = 0; i < n; i++) {
-            double* row = &cov[i * n];
-            double xi = x[i] * a;
-            for (int j = 0; j <= i; j++) row[j] = lambda * row[j] + xi * x[j];
-            vec[i] = lambda * vec[i] + xi * target;
+        const double a = 1 - lambda, keep = lambda;
+        const double* __restrict xs = x.data();
+        double* __restrict bv = vec.data();
+        double* cells = cov.data();
+        const int size = n;
+        for (int i = 0; i < size; i++) {
+            double* __restrict row = cells + i * size;
+            const double xi = xs[i] * a;
+            for (int j = 0; j <= i; j++) row[j] = keep * row[j] + xi * xs[j];
+            bv[i] = keep * bv[i] + xi * target;
         }
         if (++count < every) return;
         count = 0;
         solve();
     }
+    // Cholesky, with chol[k * n + i] holding L(i, k). Working one column at a time gives each entry
+    // the same subtractions in the same order as the row form, so results match bit for bit.
     void solve() {
-        for (int i = 0; i < n; i++) {
-            double* ci = &chol[i * n];
-            const double* ri = &cov[i * n];
-            for (int j = 0; j <= i; j++) {
-                double* cj = &chol[j * n];
-                double s = ri[j] + (i == j ? nu : 0);
-                for (int k = 0; k < j; k++) s -= ci[k] * cj[k];
-                if (i == j) {
-                    if (s <= 1e-9) return;
-                    ci[i] = std::sqrt(s);
-                } else {
-                    ci[j] = s / cj[j];
-                }
+        const int size = n;
+        double* cells = chol.data();
+        double* __restrict work = column.data();
+        const double* source = cov.data();
+        for (int j = 0; j < size; j++) {
+            for (int i = j; i < size; i++) work[i] = source[i * size + j] + 0.0;
+            work[j] += nu;
+            for (int k = 0; k < j; k++) {
+                const double* __restrict ck = cells + k * size;
+                const double factor = ck[j];
+                for (int i = j; i < size; i++) work[i] -= ck[i] * factor;
             }
+            if (work[j] <= 1e-9) return;
+            const double root = std::sqrt(work[j]);
+            double* __restrict cj = cells + j * size;
+            cj[j] = root;
+            for (int i = j + 1; i < size; i++) cj[i] = work[i] / root;
         }
-        y.resize(n);
-        for (int i = 0; i < n; i++) {
-            double s = vec[i];
-            for (int k = 0; k < i; k++) s -= chol[i * n + k] * y[k];
-            y[i] = s / chol[i * n + i];
+        double* __restrict ys = y.data();
+        const double* bv = vec.data();
+        for (int i = 0; i < size; i++) ys[i] = bv[i];
+        for (int k = 0; k < size; k++) {
+            const double* __restrict ck = cells + k * size;
+            const double value = ys[k] / ck[k];
+            ys[k] = value;
+            for (int i = k + 1; i < size; i++) ys[i] -= ck[i] * value;
         }
-        for (int i = n - 1; i >= 0; i--) {
-            double s = y[i];
-            for (int k = i + 1; k < n; k++) s -= chol[k * n + i] * w[k];
-            w[i] = s / chol[i * n + i];
+        double* out = w.data();
+        for (int i = size - 1; i >= 0; i--) {
+            const double* ci = cells + i * size;
+            double sum = ys[i];
+            for (int k = i + 1; k < size; k++) sum -= ci[k] * out[k];
+            out[i] = sum / ci[i];
         }
     }
 };
@@ -243,6 +264,11 @@ struct Mixer {
     float dot = 0, pr = 0.5f;
     void init(int n, int s, float start) { inputs = n; selectors = s; w.assign(n * s, start); }
     float mix(const float* x, int sel) {
+        const float result = weigh(x, sel);
+        pr = squash(dot);
+        return result;
+    }
+    float weigh(const float* x, int sel) {
         cur = &w[sel * inputs];
         float lane[8] = {0, 0, 0, 0, 0, 0, 0, 0};
         const int n = inputs, whole = n & ~7;
@@ -252,7 +278,6 @@ struct Mixer {
         float d = ((lane[0] + lane[1]) + (lane[2] + lane[3])) + ((lane[4] + lane[5]) + (lane[6] + lane[7]));
         for (int i = whole; i < n; i++) d += c[i] * x[i];
         dot = std::max(-14.f, std::min(14.f, d));
-        pr = squash(dot);
         return dot;
     }
     void update(const float* x, int bit, float lr) {
@@ -291,11 +316,24 @@ static inline u32 hash32(u32 a, u32 b) {
     return h ^ (h >> 15);
 }
 
-static inline int quant_log(int v) {
-    static const int limits[] = {0, 1, 2, 3, 5, 7, 10, 14, 20, 28, 40, 56, 80, 112, 160};
-    for (int i = 0; i < 15; i++) if (v <= limits[i]) return i;
-    return 15;
+// std::lround for the small values used while coding: halves round away from zero.
+static inline int round_float(float v) {
+    int t = (int)v;
+    float rest = v - (float)t;
+    return rest >= 0.5f ? t + 1 : rest <= -0.5f ? t - 1 : t;
 }
+
+static unsigned char QUANT_LOG[161];
+static const bool quant_ready = [] {
+    static const int limits[] = {0, 1, 2, 3, 5, 7, 10, 14, 20, 28, 40, 56, 80, 112, 160};
+    for (int v = 0, i = 0; v <= 160; v++) {
+        while (v > limits[i]) i++;
+        QUANT_LOG[v] = (unsigned char)i;
+    }
+    return true;
+}();
+
+static inline int quant_log(int v) { return v > 160 ? 15 : QUANT_LOG[v < 0 ? 0 : v]; }
 
 static inline int quant_signed(int v) {
     int a = std::abs(v);
@@ -315,6 +353,7 @@ struct Model {
     std::vector<OLS> ols[NOLS];
     std::vector<std::vector<std::pair<int, int>>> offsets[NOLS];  // per plane: (dx, dy) + plane in `planes`
     std::vector<std::vector<int>> planes[NOLS];
+    std::vector<std::vector<int>> reach[NOLS];  // byte offsets of the regressors from the current pixel
     std::vector<float> perr[NOLS];
     std::vector<Counter> tables[NCTX];
     Mixer mix[5], final_mix;
@@ -360,6 +399,8 @@ struct Model {
                 }
             offsets[k][plane] = off;
             planes[k][plane] = pl;
+            reach[k][plane].clear();
+            for (size_t i = 0; i < off.size(); i++) reach[k][plane].push_back(off[i].second * stride + off[i].first * c + pl[i]);
             for (int phase = 0; phase < 4; phase++) ols[k][plane * 4 + phase].init((int)off.size(), LAMBDA[k], EVERY[k]);
         }
     }
@@ -370,7 +411,7 @@ struct Model {
         buf.assign((h + 2 * PAD) * stride, 0);
         errs.assign((h + 2 * PAD) * stride, 0);
         for (int k = 0; k < NOLS; k++) {
-            ols[k].resize(c * 4); offsets[k].resize(c); planes[k].resize(c);
+            ols[k].resize(c * 4); offsets[k].resize(c); planes[k].resize(c); reach[k].resize(c);
             perr[k].assign((h + 2 * PAD) * stride, 0.f);
         }
         {
@@ -392,9 +433,89 @@ struct Model {
     }
 };
 
+#ifdef __AVX2__
+static inline __m256d det_exp4(__m256d v) {
+    const __m256d ln2 = _mm256_set1_pd(LN2);
+    const __m256d x = _mm256_max_pd(_mm256_set1_pd(-40.0), _mm256_min_pd(_mm256_set1_pd(40.0), v));
+    const __m256d scaled = _mm256_div_pd(x, ln2);
+    const __m256d half = _mm256_blendv_pd(_mm256_set1_pd(0.5), _mm256_set1_pd(-0.5), _mm256_cmp_pd(scaled, _mm256_setzero_pd(), _CMP_LT_OQ));
+    const __m128i k = _mm256_cvttpd_epi32(_mm256_add_pd(scaled, half));
+    const __m256d r = _mm256_sub_pd(x, _mm256_mul_pd(_mm256_cvtepi32_pd(k), ln2));
+    __m256d poly = _mm256_add_pd(_mm256_set1_pd(1.0 / 5040), _mm256_div_pd(r, _mm256_set1_pd(40320)));
+    poly = _mm256_add_pd(_mm256_set1_pd(1.0 / 720), _mm256_mul_pd(r, poly));
+    poly = _mm256_add_pd(_mm256_set1_pd(1.0 / 120), _mm256_mul_pd(r, poly));
+    poly = _mm256_add_pd(_mm256_set1_pd(1.0 / 24), _mm256_mul_pd(r, poly));
+    poly = _mm256_add_pd(_mm256_set1_pd(1.0 / 6), _mm256_mul_pd(r, poly));
+    poly = _mm256_add_pd(_mm256_set1_pd(0.5), _mm256_mul_pd(r, poly));
+    poly = _mm256_add_pd(_mm256_set1_pd(1), _mm256_mul_pd(r, poly));
+    poly = _mm256_add_pd(_mm256_set1_pd(1), _mm256_mul_pd(r, poly));
+    const __m256i bits = _mm256_slli_epi64(_mm256_add_epi64(_mm256_cvtepi32_epi64(k), _mm256_set1_epi64x(1023)), 52);
+    return _mm256_mul_pd(poly, _mm256_castsi256_pd(bits));
+}
+
+static inline __m256d det_log4(__m256d v) {
+    const __m256i bits = _mm256_castpd_si256(v);
+    __m256i e = _mm256_sub_epi64(_mm256_and_si256(_mm256_srli_epi64(bits, 52), _mm256_set1_epi64x(0x7ff)), _mm256_set1_epi64x(1023));
+    const __m256i tail = _mm256_and_si256(bits, _mm256_set1_epi64x(0xFFFFFFFFFFFFFll));
+    __m256d m = _mm256_castsi256_pd(_mm256_or_si256(tail, _mm256_set1_epi64x((long long)1023 << 52)));
+    const __m256d big = _mm256_cmp_pd(m, _mm256_set1_pd(1.41421356237309504880), _CMP_GT_OQ);
+    m = _mm256_blendv_pd(m, _mm256_mul_pd(m, _mm256_set1_pd(0.5)), big);
+    e = _mm256_sub_epi64(e, _mm256_castpd_si256(big));
+    const __m128i low = _mm256_castsi256_si128(_mm256_permutevar8x32_epi32(e, _mm256_setr_epi32(0, 2, 4, 6, 0, 0, 0, 0)));
+    const __m256d one = _mm256_set1_pd(1);
+    const __m256d t = _mm256_div_pd(_mm256_sub_pd(m, one), _mm256_add_pd(m, one));
+    const __m256d t2 = _mm256_mul_pd(t, t);
+    __m256d series = _mm256_add_pd(_mm256_set1_pd(1.0 / 11), _mm256_div_pd(t2, _mm256_set1_pd(13)));
+    series = _mm256_add_pd(_mm256_set1_pd(1.0 / 9), _mm256_mul_pd(t2, series));
+    series = _mm256_add_pd(_mm256_set1_pd(1.0 / 7), _mm256_mul_pd(t2, series));
+    series = _mm256_add_pd(_mm256_set1_pd(1.0 / 5), _mm256_mul_pd(t2, series));
+    series = _mm256_add_pd(_mm256_set1_pd(1.0 / 3), _mm256_mul_pd(t2, series));
+    series = _mm256_add_pd(one, _mm256_mul_pd(t2, series));
+    const __m256d scaled = _mm256_mul_pd(_mm256_add_pd(t, t), series);
+    return _mm256_add_pd(scaled, _mm256_mul_pd(_mm256_cvtepi32_pd(low), _mm256_set1_pd(LN2)));
+}
+
+static inline __m128 squash4(__m128 t) {
+    const __m256d negated = _mm256_sub_pd(_mm256_setzero_pd(), _mm256_cvtps_pd(t));
+    const __m256d one = _mm256_set1_pd(1);
+    return _mm256_cvtpd_ps(_mm256_div_pd(one, _mm256_add_pd(one, det_exp4(negated))));
+}
+
+static inline __m128 stretch4(__m128 p) {
+    const __m256d wide = _mm256_cvtps_pd(p);
+    return _mm256_cvtpd_ps(det_log4(_mm256_div_pd(wide, _mm256_sub_pd(_mm256_set1_pd(1), wide))));
+}
+
+static inline __m256 cdf8(__m256 z) {
+    const __m256 f = _mm256_mul_ps(_mm256_add_ps(z, _mm256_set1_ps(16.f)), _mm256_set1_ps(LogisticTable::N / 32.f));
+    const __m256 low = _mm256_cmp_ps(z, _mm256_set1_ps(-16.f), _CMP_LE_OQ);
+    const __m256 high = _mm256_cmp_ps(z, _mm256_set1_ps(16.f), _CMP_GE_OQ);
+    const __m256i i = _mm256_andnot_si256(_mm256_castps_si256(_mm256_or_ps(low, high)), _mm256_cvttps_epi32(f));
+    const __m256 a = _mm256_sub_ps(f, _mm256_cvtepi32_ps(i));
+    const __m256 t0 = _mm256_i32gather_ps(cdf.t, i, 4), t1 = _mm256_i32gather_ps(cdf.t + 1, i, 4);
+    const __m256 mixed = _mm256_add_ps(t0, _mm256_mul_ps(_mm256_sub_ps(t1, t0), a));
+    return _mm256_blendv_ps(_mm256_blendv_ps(mixed, _mm256_set1_ps(cdf.t[0]), low), _mm256_set1_ps(cdf.t[LogisticTable::N]), high);
+}
+#endif
+
 // Parametric mixture state for one sample.
-struct Params {
-    float mu[NPARAM], s[NPARAM];
+struct alignas(32) Params {
+    float mu[8] = {}, s[8] = {0, 0, 0, 0, 0, 0, 0, 1.f};  // NPARAM, padded to a whole vector
+#ifdef __AVX2__
+    static const int EDGES = 6;
+    mutable __m256 edge_cdf[EDGES];
+    mutable int edge_at[EDGES];
+    mutable int edges = 0;
+    // The logistic CDF at v - 0.5 for all mixtures, kept because decisions share their edges.
+    __m256 edge(int v) const {
+        for (int i = 0; i < edges; i++) if (edge_at[i] == v) return edge_cdf[i];
+        const __m256 z = _mm256_div_ps(_mm256_sub_ps(_mm256_set1_ps(v - 0.5f), _mm256_load_ps(mu)), _mm256_load_ps(s));
+        const __m256 value = cdf8(z);
+        if (edges < EDGES) { edge_at[edges] = v; edge_cdf[edges++] = value; }
+        return value;
+    }
+    __m256 mass8(int lo, int hi) const { return _mm256_sub_ps(edge(hi + 1), edge(lo)); }
+#endif
     float mass(int i, int lo, int hi) const {
         return cdf((hi + 0.5f - mu[i]) / s[i]) - cdf((lo - 0.5f - mu[i]) / s[i]);
     }
@@ -407,27 +528,55 @@ static int code_decision(Model& m, Coder& coder, int bit, int node, const Params
     float* in = m.inputs;
     int k = 0;
     for (int i = 0; i < NCTX; i++) {
-        Counter* e = &m.tables[i][(m.ctx[i] + (u32)node * 0x9E3779B1u) >> (32 - TABLE_BITS)];
-        m.active[i] = e;
+        m.active[i] = &m.tables[i][(m.ctx[i] + (u32)node * 0x9E3779B1u) >> (32 - TABLE_BITS)];
+        __builtin_prefetch(m.active[i], 1);
+    }
+    for (int i = 0; i < NCTX; i++) {
+        Counter* e = m.active[i];
         in[k++] = STRETCH[(int)e->fast >> 4];
         in[k++] = STRETCH[(int)e->slow >> 4];
     }
+#ifdef __AVX2__
+    {
+        const __m256 yes = par.mass8(plo1, phi1);
+        const __m256 no = phi2 >= plo2 ? par.mass8(plo2, phi2)
+                                       : _mm256_max_ps(_mm256_sub_ps(par.mass8(0, 255), yes), _mm256_setzero_ps());
+        __m256 p = _mm256_div_ps(_mm256_add_ps(yes, _mm256_set1_ps(1e-7f)),
+                                 _mm256_add_ps(_mm256_add_ps(yes, no), _mm256_set1_ps(2e-7f)));
+        p = _mm256_min_ps(_mm256_set1_ps(0.99998f), _mm256_max_ps(_mm256_set1_ps(0.00002f), p));
+        alignas(32) float out[8];
+        _mm_store_ps(out, stretch4(_mm256_castps256_ps128(p)));
+        _mm_store_ps(out + 4, stretch4(_mm256_extractf128_ps(p, 1)));
+        for (int i = 0; i < NPARAM; i++) in[k++] = out[i];
+    }
+#else
     for (int i = 0; i < NPARAM; i++) {
         float yes = par.mass(i, plo1, phi1);
         float no = phi2 >= plo2 ? par.mass(i, plo2, phi2) : std::max(0.f, par.mass(i, 0, 255) - yes);
         float p = (yes + 1e-7f) / (yes + no + 2e-7f);
         in[k++] = stretch(clamp_p(p));
     }
+#endif
     in[k++] = 0.3f;
 
     int nc = std::min(node, 31);
-    m.second[0] = m.mix[0].mix(in, node);
-    m.second[1] = m.mix[1].mix(in, nc * 16 + energy);
-    m.second[2] = m.mix[2].mix(in, (nc * 4 + plane) * 8 + (m.ctx[2] & 7));
-    m.second[3] = m.mix[3].mix(in, nc * 16 + m.phase_ctx);
-    m.second[4] = m.mix[4].mix(in, nc * 256 + m.texture_ctx);
+    m.second[0] = m.mix[0].weigh(in, node);
+    m.second[1] = m.mix[1].weigh(in, nc * 16 + energy);
+    m.second[2] = m.mix[2].weigh(in, (nc * 4 + plane) * 8 + (m.ctx[2] & 7));
+    m.second[3] = m.mix[3].weigh(in, nc * 16 + m.phase_ctx);
+    m.second[4] = m.mix[4].weigh(in, nc * 256 + m.texture_ctx);
+#ifdef __AVX2__
+    {
+        alignas(16) float squashed[4];
+        _mm_store_ps(squashed, squash4(_mm_loadu_ps(m.second)));
+        for (int i = 0; i < 4; i++) m.mix[i].pr = squashed[i];
+        m.mix[4].pr = squash(m.second[4]);
+    }
+#else
+    for (int i = 0; i < 5; i++) m.mix[i].pr = squash(m.second[i]);
+#endif
     float st = m.final_mix.mix(m.second, node);
-    float p0 = squash(st);
+    float p0 = m.final_mix.pr;  // the same squash of the same value
     float a0 = m.apm[0].refine(st, node * 16 + energy);
     float a1 = m.apm[1].refine(st, (m.ctx[7] >> 18) & 0x3fff);
     float p = 0.5f * p0 + 0.25f * a0 + 0.25f * a1;
@@ -441,13 +590,21 @@ static int code_decision(Model& m, Coder& coder, int bit, int node, const Params
     m.final_mix.update(m.second, bit, 0.001f);
     m.apm[0].update(bit, 0.02f);
     m.apm[1].update(bit, 0.02f);
+    // Done in arrays so the divisions run side by side.
+    int fast[NCTX], slow[NCTX], seen[NCTX];
+    for (int i = 0; i < NCTX; i++) {
+        const Counter* e = m.active[i];
+        fast[i] = e->fast; slow[i] = e->slow; seen[i] = e->n;
+    }
+    const int target = bit ? 65535 : 0;
+    for (int i = 0; i < NCTX; i++) {
+        fast[i] = (int)((float)fast[i] + (float)(target - fast[i]) / ((float)std::min(seen[i], 30) + 1.5f));
+        slow[i] = (int)((float)slow[i] + (float)(target - slow[i]) / ((float)std::min(seen[i], 250) + 1.5f));
+    }
     for (int i = 0; i < NCTX; i++) {
         Counter* e = m.active[i];
-        int target = bit ? 65535 : 0;
-        int n = e->n;
-        e->fast += (target - e->fast) / (std::min(n, 30) + 1.5f);
-        e->slow += (target - e->slow) / (std::min(n, 250) + 1.5f);
-        if (n < 1000) e->n = n + 1;
+        e->fast = (u16)fast[i]; e->slow = (u16)slow[i];
+        if (seen[i] < 1000) e->n = (u16)(seen[i] + 1);
     }
     m.decisions++;
     return bit;
@@ -471,8 +628,10 @@ static void run(Model& m, Coder& coder, const Image* src, const int order[4]) {
                 for (int k = 0; k < NOLS; k++) slot[k] = idx * 4 + (idx > 0 && k < 2 ? phase : 0);
                 for (int k = 0; k < NOLS; k++) {
                     OLS& o = m.ols[k][slot[k]];
-                    for (int i = 0; i < o.n; i++)
-                        o.x[i] = m.at(x + m.offsets[k][idx][i].first, y + m.offsets[k][idx][i].second, m.planes[k][idx][i]) - base;
+                    const int* steps = m.reach[k][idx].data();
+                    const u8* here = &m.at(x, y, 0);
+                    double* regressors = o.x.data();
+                    for (int i = 0; i < o.n; i++) regressors[i] = here[steps[i]] - base;
                 }
                 int med = W + N - NW;
                 int lo_n = std::min(W, N), hi_n = std::max(W, N);
@@ -534,7 +693,7 @@ static void run(Model& m, Coder& coder, const Image* src, const int order[4]) {
                 int bias_slot = idx << 12 | (int)tex_bias << 4 | energy;
                 if (m.bias_count[bias_slot] > 0) blended += m.bias_sum[bias_slot] / m.bias_count[bias_slot];
                 blended = std::max(0.f, std::min(255.f, blended));
-                int P = (int)std::lround(blended);
+                int P = round_float(blended);
 
                 Params par;
                 static const int PICK[6] = {0, 1, 10, 3, 7, 8};
@@ -565,7 +724,7 @@ static void run(Model& m, Coder& coder, const Image* src, const int order[4]) {
                 m.texture_ctx = tex;
                 int spread = 0, lowest = 1000, highest = -1000;
                 for (int k = 0; k < NOLS; k++) {
-                    int v = (int)std::lround(ols_p[k]) - P;
+                    int v = round_float(ols_p[k]) - P;
                     lowest = std::min(lowest, v);
                     highest = std::max(highest, v);
                 }

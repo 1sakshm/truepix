@@ -1,3 +1,4 @@
+import hashlib
 import sys
 from pathlib import Path
 
@@ -29,6 +30,12 @@ def test_round_trip_keeps_every_pixel(tmp_path, channels):
     assert truepix.main(["decompress", str(tmp_path / "a.tpix"), "-o", str(tmp_path / "b.png")]) == 0
     restored = np.asarray(Image.open(tmp_path / "b.png"))
     assert np.array_equal(restored, array[..., 0] if channels == 1 else array)
+
+
+def test_files_match_the_scored_build(tmp_path):
+    # Speed changes must not move a single byte, or the published results stop describing the codec.
+    truepix.compress_pixels(photo(64, 48, 3), tmp_path / "a.tpix")
+    assert hashlib.sha256((tmp_path / "a.tpix").read_bytes()).hexdigest() == "2878d8c174d70fc23bb141b3fd1c5909bb80c5b8fb223be5654e5ef386a7d1b7"
 
 
 def test_files_start_with_the_magic(tmp_path):

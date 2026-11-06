@@ -27,14 +27,15 @@ uv run truepix decompress photo.tpix         # writes photo.png
 ```
 
 On Linux or macOS, build without `-static` and with `-pthread`, and name the file
-`truepix-core`. Without AVX2, leave out `-mavx2`; the files are the same. Keep
+`truepix-core`. Without AVX2, leave out `-mavx2`; the files are the same, but it runs slower. Keep
 `-ffp-contract=off`: without it, files may not decode on other builds. Set `TRUEPIX_CORE` to use
 a codec stored somewhere else.
 
 ## Limits
 
-- **Speed:** a 3-megapixel photo takes about 17 seconds to encode and 11 to decode, about 141
-  times slower to decode than JPEG XL. It suits archives, not web pages.
+- **Speed:** a 3-megapixel photo takes about 12 seconds to encode and 7 to decode on an 8-core
+  laptop, about 90 times slower to decode than JPEG XL. It suits archives, not web pages. The
+  paper's timings came from an earlier build (17 and 11 seconds) that wrote the same files.
 - **Pixels only:** colour profiles and other metadata are not stored.
 - **Formats:** 8-bit grey or RGB, with or without alpha. Other images are refused, not converted.
 - **File format:** not stable yet, so keep your originals until it is.
