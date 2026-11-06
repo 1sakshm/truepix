@@ -534,13 +534,13 @@ const hero = (() => {
     if (head < n) { head = Math.min(n, head + Math.ceil(n / 150)); if (head >= n) ready = true; }
     const px = (pointer.x - box.left) / cell, py = (pointer.y - box.top) / cell, radius = 5;
     const fall = clamp(-box.top / box.height), lift = fall * fall * h * 1.1;
-    words.fill(ink);
+    words.fill(head < n ? SKY[1] : ink);  // yellow while decoding, so the black headline can be read
     let moved = 0;
     const row = Math.floor(head / w);
     for (let i = 0; i < n; i++) {
       const x = i % w, y = (i - x) / w;
       if (i >= head) {
-        if ((y + x + Math.floor(seed[i] * 40)) % 7 === 0) words[i] = SKY[1];
+        if ((y + x + Math.floor(seed[i] * 40)) % 7 === 0) words[i] = SKY[3];
         continue;
       }
       if (!still) {
