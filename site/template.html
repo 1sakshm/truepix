@@ -196,6 +196,7 @@ tr.ours th, tr.ours td { font-weight: 700; }
 .drop.over { background: var(--tomato); }
 .choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .work { display: grid; gap: 8px; margin-top: 20px; font: 700 0.8125rem var(--data); }
+.work .button { justify-self: start; }
 .meter { height: 26px; background: var(--ink); }
 .meter i { display: block; width: 0; height: 100%; background: var(--tomato); transition: width 0.25s linear; }
 .tool-error { margin-top: 20px; padding: 12px 14px; background: var(--ink); color: var(--sun); font-weight: 600; }
@@ -364,11 +365,12 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
         <button class="button" id="sample" type="button">Try the sample image</button>
       </div>
       <input id="file" type="file" hidden accept="image/png,image/jpeg,image/webp,image/bmp,.tpix,.zip">
-      <span class="small">PNG, JPEG, WebP or BMP, up to 4 megapixels. Allow about a minute per megapixel, including the pixel check.</span>
+      <span class="small">PNG, JPEG, WebP or BMP, up to 16 megapixels. Allow about 30 seconds per megapixel on an 8-core laptop, including the pixel check.</span>
     </div>
     <div class="work" id="work" role="status" hidden>
       <span id="work-text">Starting…</span>
       <div class="meter"><i id="meter"></i></div>
+      <button class="button" id="cancel" type="button">Cancel</button>
     </div>
     <p class="tool-error" id="tool-error" role="alert" hidden></p>
     <div class="out" id="out" hidden>
@@ -500,7 +502,7 @@ const hero = (() => {
   return () => {
     const n = w * h, ink = rgba(C.ink), box = canvas.getBoundingClientRect();
     if (head < n) { head = Math.min(n, head + Math.ceil(n / 150)); if (head >= n) ready = true; }
-    const px = (pointer.x - box.left) / cell, py = (pointer.y - box.top) / cell, radius = 11;
+    const px = (pointer.x - box.left) / cell, py = (pointer.y - box.top) / cell, radius = 5;
     const fall = clamp(-box.top / box.height), lift = fall * fall * h * 1.1;
     words.fill(ink);
     let moved = 0;
@@ -515,7 +517,7 @@ const hero = (() => {
         if (pointer.on) {
           const ax = x + dx[i] - px, ay = y + dy[i] - py, d2 = ax * ax + ay * ay;
           if (d2 < radius * radius && d2 > 0.01) {
-            const d = Math.sqrt(d2), push = (1 - d / radius) * 1.7;
+            const d = Math.sqrt(d2), push = (1 - d / radius) * 1.2;
             vx[i] += ax / d * push; vy[i] += ay / d * push;
           }
         }
@@ -811,34 +813,34 @@ const open = async () => {
     stubs[item.module] ??= {};
     stubs[item.module][item.name] = item.name === "proc_exit" ? (code) => { throw new Error("exit " + code); } : () => 0;
   }
-  let done = 0;
-  stubs.env.tp_tick = (samples) => { done += samples; postMessage({ tick: done }); };
+  stubs.env.tp_tick = (samples) => postMessage({ tick: samples });
   const instance = await WebAssembly.instantiate(wasm, stubs);
   instance.exports._initialize?.();
   return instance.exports;
 };
 const put = (w, bytes) => { const at = w.tp_alloc(bytes.length); new Uint8Array(w.memory.buffer, at, bytes.length).set(bytes); return at; };
 const take = (w, at, size) => new Uint8Array(w.memory.buffer, at, size).slice();
-function rebuild(w, file) {
-  const at = put(w, file), failed = w.tp_decompress(at, file.length);
-  w.tp_free(at);
-  if (failed) throw new Error("damaged");
-  const width = w.tp_width(), height = w.tp_height(), channels = w.tp_channels();
-  return { width, height, channels, pixels: take(w, w.tp_pixels(), width * height * channels) };
-}
 onmessage = async ({ data }) => {
   try {
-    wasm ??= await WebAssembly.compile(data.wasm);
+    if (data.wasm) wasm = await WebAssembly.compile(data.wasm);
     const w = await open();
-    if (data.job === "compress") {
-      const { pixels, width, height, channels } = data;
-      const at = put(w, pixels), size = w.tp_compress(at, width, height, channels);
-      w.tp_free(at);
-      const file = take(w, w.tp_packed(), size), back = rebuild(w, file);
-      const exact = back.pixels.length === pixels.length && back.pixels.every((v, i) => v === pixels[i]);
-      postMessage({ result: { ...back, file, exact } });
+    if (data.job === "plan") {
+      const scratch = w.tp_alloc(16), boxes = [];
+      for (let t = 0; t < data.side * data.side; t++) {
+        w.tp_tile_box(data.width, data.height, data.side, t, scratch);
+        const [x0, y0, x1, y1] = new Int32Array(w.memory.buffer, scratch, 4);
+        boxes.push({ x0, y0, x1, y1 });
+      }
+      let crc = 0;
+      if (data.pixels) { const at = put(w, data.pixels); crc = w.tp_crc(at, data.pixels.length) >>> 0; w.tp_free(at); }
+      postMessage({ result: { boxes, crc } });
+    } else if (data.job === "encode") {
+      const at = put(w, data.pixels), size = w.tp_encode_tile(at, data.width, data.height, data.channels);
+      postMessage({ result: take(w, w.tp_packed(), size) });
     } else {
-      postMessage({ result: rebuild(w, data.file) });
+      const at = put(w, data.part);
+      if (w.tp_decode_tile(at, data.part.length, data.width, data.height, data.channels)) throw new Error("damaged");
+      postMessage({ result: take(w, w.tp_pixels(), data.width * data.height * data.channels) });
     }
   } catch (error) {
     postMessage({ error: error.message });
@@ -848,8 +850,8 @@ onmessage = async ({ data }) => {
 
 const tool = (() => {
   const box = { drop: $("#drop"), file: $("#file"), work: $("#work"), text: $("#work-text"), meter: $("#meter"), error: $("#tool-error"), out: $("#out"), image: $("#out-image"), facts: $("#facts"), verdict: $("#verdict"), save: $("#save"), note: $("#save-note") };
-  const LIMIT = 4000000;
-  let wasm = null, busy = false, offer = null;
+  const LIMIT = 16000000, WORKERS = Math.max(1, Math.min(4, navigator.hardwareConcurrency || 2));
+  let wasm = null, busy = false, offer = null, active = [], abandon = null;
   const formatSize = (n) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(2)} MB`;
   const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
   const stem = (name) => name.replace(/(\.tpix)?(\.[^.]+)$/i, "") || "image";
@@ -878,7 +880,7 @@ const tool = (() => {
   async function pixelsOf(file) {
     const bitmap = await createImageBitmap(file, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
     const { width, height } = bitmap;
-    if (width * height > LIMIT) { bitmap.close(); throw new Error(`This image is ${(width * height / 1e6).toFixed(1)} megapixels. The browser version takes up to 4.`); }
+    if (width * height > LIMIT) { bitmap.close(); throw new Error(`This image is ${(width * height / 1e6).toFixed(1)} megapixels. The browser version takes up to 16.`); }
     const canvas = document.createElement("canvas");
     canvas.width = width; canvas.height = height;
     const g = canvas.getContext("2d", { willReadFrequently: true });
@@ -943,29 +945,105 @@ const tool = (() => {
     }
   }
 
-  function run(job, transfer, total, label, done) {
-    const worker = new Worker(URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" })));
-    const begun = performance.now();
-    const finish = () => { worker.terminate(); busy = false; box.work.hidden = true; };
-    worker.onerror = () => { finish(); fail("Your browser couldn't run the codec here."); };
-    worker.onmessage = ({ data }) => {
-      if (data.tick !== undefined) {
-        const f = clamp(data.tick / total, 0, 0.99);
-        box.meter.style.width = `${f * 100}%`;
-        box.text.textContent = `${data.tick * 2 > total && job.job === "compress" ? "Checking every pixel" : label} ${Math.round(f * 100)}%`;
-      } else if (data.error) {
-        finish(); fail(data.error === "damaged" ? "This Truepix file is damaged or from another version." : "Your browser couldn't run the codec here.");
-      } else {
-        finish(); done(data.result, performance.now() - begun);
-      }
-    };
-    worker.postMessage({ ...job, wasm: wasm.slice(0) }, transfer);
+  function stop() {
+    active.forEach((worker) => worker.terminate());
+    active = [];
   }
 
-  function sampleImage() {
-    const width = 240, height = 160, picture = desert(width, height), pixels = new Uint8Array(width * height * 3);
-    picture.forEach((value, i) => { pixels[i * 3] = value & 255; pixels[i * 3 + 1] = value >> 8 & 255; pixels[i * 3 + 2] = value >> 16 & 255; });
-    return { pixels, width, height, channels: 3 };
+  // Runs jobs on a small pool of workers. Tiles are independent, so they can all run at once.
+  function pool(jobs, onTick) {
+    return new Promise((resolve, reject) => {
+      const results = new Array(jobs.length), source = URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
+      let next = 0, finished = 0;
+      abandon = () => { stop(); reject(new Error("cancelled")); };
+      const feed = (worker, first) => {
+        if (next >= jobs.length) return;
+        const index = next++;
+        worker.index = index;
+        worker.postMessage(first ? { ...jobs[index], wasm: wasm.slice(0) } : jobs[index]);
+      };
+      for (let i = 0; i < Math.min(WORKERS, jobs.length); i++) {
+        const worker = new Worker(source);
+        active.push(worker);
+        worker.onerror = () => { stop(); reject(new Error("browser")); };
+        worker.onmessage = ({ data }) => {
+          if (data.tick !== undefined) { onTick?.(data.tick); return; }
+          if (data.error) { stop(); reject(new Error(data.error === "damaged" ? "damaged" : "browser")); return; }
+          results[worker.index] = data.result;
+          if (++finished === jobs.length) { stop(); URL.revokeObjectURL(source); resolve(results); } else feed(worker, false);
+        };
+        feed(worker, true);
+      }
+    });
+  }
+
+  function progress(total) {
+    const begun = performance.now();
+    let done = 0;
+    return (samples, label) => {
+      done += samples;
+      const f = clamp(done / total, 0, 0.99), spent = performance.now() - begun;
+      box.meter.style.width = `${f * 100}%`;
+      let left = "";
+      if (f > 0.03) {
+        const rest = spent / f * (1 - f) / 1000;
+        left = rest < 60 ? `, about ${Math.ceil(rest / 5) * 5} s left` : `, about ${Math.ceil(rest / 60)} min left`;
+      }
+      box.text.textContent = `${label} ${Math.round(f * 100)}%${left}`;
+    };
+  }
+
+  const tileSide = (width, height) => (width * height >= 1 << 20 && width >= 32 && height >= 32 ? 2 : 1);
+  function cut(image, b) {
+    const { pixels, width, channels } = image, w = b.x1 - b.x0, h = b.y1 - b.y0, out = new Uint8Array(w * h * channels);
+    for (let y = 0; y < h; y++) {
+      const from = ((b.y0 + y) * width + b.x0) * channels;
+      out.set(pixels.subarray(from, from + w * channels), y * w * channels);
+    }
+    return { width: w, height: h, channels, pixels: out };
+  }
+  function paste(pixels, width, channels, b, tile) {
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    for (let y = 0; y < h; y++) pixels.set(tile.subarray(y * w * channels, (y + 1) * w * channels), ((b.y0 + y) * width + b.x0) * channels);
+  }
+
+  // Lays the tiles out exactly as the desktop build's pack function does.
+  function assemble(image, side, crc, parts) {
+    const head = 18 + parts.length * 4, size = parts.reduce((sum, part) => sum + part.length, head);
+    const file = new Uint8Array(size), view = new DataView(file.buffer);
+    file.set([0x54, 0x50, 0x58, 0x31]);
+    view.setUint32(4, image.width, true); view.setUint32(8, image.height, true);
+    file[12] = image.channels; file[13] = side;
+    view.setUint32(14, crc, true);
+    let at = head;
+    parts.forEach((part, i) => { view.setUint32(18 + i * 4, part.length, true); file.set(part, at); at += part.length; });
+    return file;
+  }
+
+  async function rebuild(file, bytesTick) {
+    const view = new DataView(file.buffer, file.byteOffset), width = view.getUint32(4, true), height = view.getUint32(8, true);
+    const channels = file[12], side = file[13], count = side * side, head = 18 + count * 4;
+    if (!width || !height || channels < 1 || channels > 4 || side < 1 || side > 2 || file.length < head) throw new Error("damaged");
+    if (width * height > LIMIT) throw new Error(`This file holds a ${(width * height / 1e6).toFixed(1)} megapixel image. The browser version takes up to 16.`);
+    const [{ boxes }] = await pool([{ job: "plan", width, height, side }]);
+    let at = head;
+    const jobs = boxes.map((b, t) => {
+      const size = view.getUint32(18 + t * 4, true), part = file.slice(at, at + size);
+      at += size;
+      return { job: "decode", part, width: b.x1 - b.x0, height: b.y1 - b.y0, channels };
+    });
+    if (at !== file.length) throw new Error("damaged");
+    const tiles = await pool(jobs, bytesTick), pixels = new Uint8Array(width * height * channels);
+    boxes.forEach((b, t) => paste(pixels, width, channels, b, tiles[t]));
+    return { pixels, width, height, channels };
+  }
+
+  function explain(error) {
+    if (error.message === "cancelled") return "Cancelled.";
+    if (error.message === "damaged") return "This Truepix file is damaged or from another version.";
+    if (error.message === "browser") return "Your browser couldn't finish this. Large images need about a gigabyte of free memory, so try a smaller one.";
+    if (/source image|decode|bitmap|state/i.test(error.message)) return "This file isn't an image the browser can read.";
+    return error.message;
   }
 
   async function handle(file, given) {
@@ -973,46 +1051,51 @@ const tool = (() => {
     busy = true;
     box.error.hidden = true; box.out.hidden = true; box.note.hidden = true; box.facts.replaceChildren(); offer = null;
     box.meter.style.width = "0"; box.work.hidden = false; box.text.textContent = "Starting…";
+    const begun = performance.now();
     try {
-      wasm ??= await fetch("truepix.wasm").then((r) => { if (!r.ok) throw new Error(); return r.arrayBuffer(); });
-    } catch { fail("The codec couldn't load. Check your connection and try again."); return; }
-    const isPacked = !given && /\.(tpix|zip)$/i.test(file.name);
-    try {
-      if (isPacked) {
-        const bytes = unwrap(new Uint8Array(await file.arrayBuffer()));
+      try {
+        wasm ??= await fetch("truepix.wasm").then((r) => { if (!r.ok) throw new Error(); return r.arrayBuffer(); });
+      } catch { throw new Error("The codec couldn't load. Check your connection and try again."); }
+      if (!given && /\.(tpix|zip)$/i.test(file.name)) {
+        const bytes = unwrap(new Uint8Array(await file.arrayBuffer())).slice();
         if (String.fromCharCode(...bytes.subarray(0, 4)) !== "TPX1") throw new Error("This isn't a Truepix file.");
-        const view = new DataView(bytes.buffer, bytes.byteOffset);
-        const total = view.getUint32(4, true) * view.getUint32(8, true) * bytes[12];
-        const copy = bytes.slice();
-        run({ job: "decompress", file: copy }, [copy.buffer], total, "Rebuilding", (result, ms) => {
-          show(result); box.out.hidden = false;
-          fact("Truepix file", formatSize(bytes.length));
-          fact("Image", `${result.width} × ${result.height}`);
-          fact("Time here", seconds(ms));
-          fact("Checksum", "Match");
-          box.verdict.textContent = "Rebuilt, and the checksum stored in the file matches every pixel.";
-          box.save.textContent = "Save PNG";
-          offer = { name: stem(file.name) + ".png", blob: () => new Promise((done) => box.image.toBlob(done, "image/png")) };
-        });
+        const view = new DataView(bytes.buffer), total = view.getUint32(4, true) * view.getUint32(8, true) * bytes[12];
+        const tick = progress(total), result = await rebuild(bytes, (n) => tick(n, "Rebuilding"));
+        const [{ crc }] = await pool([{ job: "plan", width: 1, height: 1, side: 1, pixels: result.pixels }]);
+        if (crc !== view.getUint32(14, true)) throw new Error("damaged");
+        show(result); box.out.hidden = false;
+        fact("Truepix file", formatSize(bytes.length));
+        fact("Image", `${result.width} × ${result.height}`);
+        fact("Time here", seconds(performance.now() - begun));
+        fact("Checksum", "Match");
+        box.verdict.textContent = "Rebuilt, and the checksum stored in the file matches every pixel.";
+        box.save.textContent = "Save PNG";
+        offer = { name: stem(file.name) + ".png", blob: () => new Promise((done) => box.image.toBlob(done, "image/png")) };
       } else {
         const image = given ?? await pixelsOf(file);
-        const samples = image.pixels.length, original = given ? samples : file.size;
-        run({ job: "compress", ...image }, [image.pixels.buffer], samples * 2, "Compressing", (result, ms) => {
-          show(result); box.out.hidden = false;
-          const size = result.file.length, change = (size - original) / original * 100;
-          fact(given ? "Raw pixels" : "Your file", formatSize(original));
-          fact("Truepix file", formatSize(size));
-          fact("Change", `${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
-          fact("Every pixel", result.exact ? "Exact" : "Mismatch");
-          box.verdict.textContent = /jpe?g/i.test(file?.type ?? "")
-            ? "JPEG already threw detail away, so this stores the pixels your browser decoded from it. For JPEGs, this file can come out larger."
-            : `Compressed and rebuilt in ${seconds(ms)} on this device, then compared pixel by pixel.`;
-          box.save.textContent = "Save Truepix file";
-          offer = { name: (given ? "sample" : stem(file.name)) + ".tpix", tpix: result.file };
-        });
+        const original = given ? image.pixels.length : file.size, side = tileSide(image.width, image.height);
+        const [{ boxes, crc }] = await pool([{ job: "plan", width: image.width, height: image.height, side, pixels: image.pixels }]);
+        const tick = progress(image.pixels.length * 2);
+        const parts = await pool(boxes.map((b) => ({ job: "encode", ...cut(image, b) })), (n) => tick(n, "Compressing"));
+        const packed = assemble(image, side, crc, parts);
+        const result = await rebuild(packed, (n) => tick(n, "Checking every pixel"));
+        const exact = result.pixels.length === image.pixels.length && result.pixels.every((v, i) => v === image.pixels[i]);
+        show(result); box.out.hidden = false;
+        const size = packed.length, change = (size - original) / original * 100;
+        fact(given ? "Raw pixels" : "Your file", formatSize(original));
+        fact("Truepix file", formatSize(size));
+        fact("Change", `${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
+        fact("Every pixel", exact ? "Exact" : "Mismatch");
+        box.verdict.textContent = /jpe?g/i.test(file?.type ?? "")
+          ? "JPEG already threw detail away, so this stores the pixels your browser decoded from it. For JPEGs, this file can come out larger."
+          : `Compressed and rebuilt in ${seconds(performance.now() - begun)} on this device, then compared pixel by pixel.`;
+        box.save.textContent = "Save Truepix file";
+        offer = { name: (given ? "sample" : stem(file.name)) + ".tpix", tpix: packed };
       }
+      box.work.hidden = true; busy = false;
     } catch (error) {
-      fail(error.message && !/source image|decode|bitmap/i.test(error.message) ? error.message : "This file isn't an image the browser can read.");
+      stop();
+      fail(explain(error));
     }
   }
   $("#choose").addEventListener("click", () => box.file.click());
@@ -1022,7 +1105,8 @@ const tool = (() => {
   ["dragleave", "drop"].forEach((name) => box.drop.addEventListener(name, (e) => { e.preventDefault(); box.drop.classList.remove("over"); }));
   box.drop.addEventListener("drop", (e) => { const file = e.dataTransfer.files[0]; if (file) handle(file); });
   box.save.addEventListener("click", save);
-  return { handle };
+  $("#cancel").addEventListener("click", () => abandon?.());
+  return { handle, last: () => offer };
 })();
 
 // Sections arm only once script runs and sit below the fold, so the page is complete without this.

@@ -42,6 +42,8 @@ python -m ziglang c++ -std=c++17 -O3 -msimd128 -ffp-contract=off -fno-exceptions
   truepix-core.cpp -o site/truepix.wasm
 ```
 
+The page runs one worker per tile, so a 16-megapixel image takes about 7 minutes on an 8-core laptop.
+
 ## Limits
 
 - **Speed:** a 3-megapixel photo takes about 12 seconds to encode and 7 to decode on an 8-core

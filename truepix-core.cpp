@@ -1203,6 +1203,26 @@ __attribute__((export_name("tp_compress"))) size_t tp_compress(const u8* pixels,
     return packed.size();
 }
 __attribute__((export_name("tp_packed"))) const u8* tp_packed() { return packed.data(); }
+// One tile at a time, so the page can give each tile its own worker.
+__attribute__((export_name("tp_encode_tile"))) size_t tp_encode_tile(const u8* pixels, int w, int h, int c) {
+    Image tile;
+    tile.w = w; tile.h = h; tile.c = c;
+    tile.data.assign(pixels, pixels + (size_t)w * h * c);
+    int mode = 0;
+    packed = compress(tile, mode);
+    return packed.size();
+}
+__attribute__((export_name("tp_decode_tile"))) int tp_decode_tile(const u8* part, size_t size, int w, int h, int c) {
+    if (!tile_valid(part, size, w, h, c)) return 1;
+    unpacked = expand(part, size);
+    return 0;
+}
+__attribute__((export_name("tp_tile_box"))) void tp_tile_box(int w, int h, int side, int t, int* box) {
+    tile_box(w, h, side, t, box[0], box[1], box[2], box[3]);
+}
+__attribute__((export_name("tp_crc"))) u32 tp_crc(const u8* data, size_t size) {
+    return crc32_of(std::vector<u8>(data, data + size));
+}
 __attribute__((export_name("tp_decompress"))) int tp_decompress(const u8* file, size_t size) {
     std::vector<u8> b(file, file + size);
     unpacked = Image();
