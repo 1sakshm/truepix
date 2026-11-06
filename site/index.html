@@ -190,6 +190,8 @@ tr.ours th, tr.ours td { font-weight: 700; }
 .lane div { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; font: 700 0.875rem var(--data); }
 .race .button { margin-top: 20px; background: var(--sun); color: var(--ink); }
 
+.jpeg { background: var(--tomato); }
+.jpeg .rank.ours .rank-bar { background: var(--bone); }
 .try { background: var(--sun); }
 .drop { display: grid; justify-items: center; gap: 12px; margin-top: 24px; padding: 40px 20px; border: 4px dashed var(--ink); text-align: center; transition: background-color 0.15s; }
 .drop strong { font: 800 1.5rem var(--display); text-transform: uppercase; }
@@ -254,6 +256,7 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
       <li><a href="#how">How it works</a></li>
       <li><a href="#results">Results</a></li>
       <li><a href="#race">Speed</a></li>
+      <li><a href="#jpeg">JPEG</a></li>
       <li><a href="#try">Try it</a></li>
       <li><a href="#limits">Limits</a></li>
       <li><a href="#use">Use it</a></li>
@@ -362,6 +365,31 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
   </div>
 </section>
 
+<section class="field jpeg" id="jpeg">
+  <div class="inner" data-arm>
+    <span class="tag">Final test: 24 unseen photos at quality 85</span>
+    <h2>JPEGs shrink too, and come back byte for byte</h2>
+    <p>Truepix reads a JPEG's own data, compresses it further, and rebuilds the original file exactly. There is no new quality loss, and it takes about a second. Bars show size saved, so longer wins.</p>
+    <ul class="ranks">
+      <li class="rank ours" style="--w:100%;--i:0"><span class="rank-name">Truepix</span><span class="rank-bar"></span><span class="rank-bpp">21.84%</span><span class="rank-note">best</span></li>
+      <li class="rank" style="--w:75.1%;--i:1"><span class="rank-name">JPEG XL, effort 9</span><span class="rank-bar"></span><span class="rank-bpp">16.40%</span><span class="rank-note">&nbsp;</span></li>
+      <li class="rank" style="--w:74.7%;--i:2"><span class="rank-name">JPEG XL, effort 10</span><span class="rank-bar"></span><span class="rank-bpp">16.31%</span><span class="rank-note">&nbsp;</span></li>
+    </ul>
+    <div class="scroll">
+      <table>
+        <thead><tr><th scope="col">24 photos each</th><th scope="col">Truepix saved</th><th scope="col">JPEG XL e9 saved</th><th scope="col">Truepix wins</th><th scope="col">Rebuilt exactly</th></tr></thead>
+        <tbody>
+          <tr class="ours"><th scope="row">Quality 85</th><td>21.84%</td><td>16.40%</td><td>24 of 24</td><td>24 of 24</td></tr>
+          <tr><th scope="row">Quality 75</th><td>22.60%</td><td>16.54%</td><td>24 of 24</td><td>24 of 24</td></tr>
+          <tr><th scope="row">Quality 95</th><td>22.54%</td><td>18.51%</td><td>24 of 24</td><td>24 of 24</td></tr>
+          <tr><th scope="row">Quality 85, progressive</th><td>17.06%</td><td>11.31%</td><td>24 of 24</td><td>24 of 24</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small" style="margin-top:12px">JPEGs made by Pillow from DIV2K 0865 to 0888. The JPEG model was frozen, then scored once. Files from other encoders may behave differently.</p>
+  </div>
+</section>
+
 <section class="field try" id="try">
   <div class="inner" data-arm>
     <span class="tag">Runs on your device. Nothing is uploaded.</span>
@@ -407,10 +435,11 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
   <div class="inner" data-arm>
     <h2>What it doesn't do</h2>
     <ul>
-      <li><strong>Beat paq8px</strong> On the tuning crops, paq8px was about 5% smaller on green and 7% smaller on colour. It is also far slower.</li>
-      <li><strong>Keep metadata</strong> Colour profiles and other metadata are not stored. It keeps pixels only.</li>
+      <li><strong>Beat paq8px</strong> On the tuning crops, paq8px was about 5% smaller on green and 7% smaller on colour. On JPEGs it saved 26.41% against Truepix's 21.84%. It is also far slower.</li>
+      <li><strong>Keep metadata</strong> For PNG and similar files, colour profiles and other metadata are not stored. JPEGs keep everything.</li>
       <li><strong>Go past 8 bits</strong> Grey or RGB, with or without alpha. Anything else is refused.</li>
-      <li><strong>Open instantly</strong> A 3-megapixel photo takes about 7 seconds to decode on an 8-core laptop, so Truepix suits archives, not web pages.</li>
+      <li><strong>Rebuild every JPEG</strong> Arithmetic-coded or cut-off JPEGs can't come back exactly, so those store pixels instead, and the tool says so.</li>
+      <li><strong>Open instantly</strong> A 3-megapixel PNG takes about 7 seconds to decode on an 8-core laptop, so pixel files suit archives, not web pages. JPEGs decode in about a second.</li>
       <li><strong>Run on ARM yet</strong> It compiles for ARM64 but has never been run there.</li>
       <li><strong>Claim outside proof</strong> The results have not been independently replicated.</li>
       <li><strong>Promise a stable format</strong> The file format may change. Keep your originals for now.</li>
@@ -425,7 +454,8 @@ footer { padding: 20px; background: var(--ink); color: var(--bone); font: 400 0.
 <pre><code>g++ -std=c++17 -O3 -mavx2 -ffp-contract=off -static truepix-core.cpp -o truepix-core.exe
 
 uv run truepix compress photo.png --verify   # writes photo.tpix
-uv run truepix decompress photo.tpix         # writes photo.png</code></pre>
+uv run truepix decompress photo.tpix         # writes photo.png
+uv run truepix compress photo.jpg            # the JPEG comes back byte for byte</code></pre>
     <a class="button" href="paper.pdf">Read the paper (PDF)</a>
   </div>
 </section>

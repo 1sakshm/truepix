@@ -24,7 +24,14 @@ g++ -std=c++17 -O3 -mavx2 -ffp-contract=off -static truepix-core.cpp -o truepix-
 uv run truepix compress photo.png            # writes photo.tpix
 uv run truepix compress photo.png --verify   # also decodes it and compares every pixel
 uv run truepix decompress photo.tpix         # writes photo.png
+uv run truepix compress photo.jpg            # keeps the JPEG's own data
+uv run truepix decompress photo.tpix         # rebuilds photo.jpg byte for byte
 ```
+
+JPEGs have their own path. On 24 unseen photos at quality 85, Truepix saved 21.84% and JPEG XL's own
+JPEG recompression saved 16.40%, and every file came back byte for byte. Truepix won all 96 tests,
+across quality 75, 85, 95 and progressive files. Arithmetic-coded or truncated JPEGs can't be
+rebuilt, so those store pixels instead and the tool tells you.
 
 On Linux or macOS, build without `-static` and with `-pthread`, and name the file
 `truepix-core`. Without AVX2, leave out `-mavx2`; the files are the same, but it runs slower. Keep
@@ -49,7 +56,7 @@ The page runs one worker per tile, so a 16-megapixel image takes about 7 minutes
 - **Speed:** a 3-megapixel photo takes about 12 seconds to encode and 7 to decode on an 8-core
   laptop, about 100 times slower to decode than JPEG XL. It suits archives, not web pages. The
   paper's timings came from an earlier build (17 and 11 seconds) that wrote the same files.
-- **Pixels only:** colour profiles and other metadata are not stored.
+- **Pixels only, unless the input is a JPEG:** PNG colour profiles and other metadata are not stored. A JPEG keeps everything, because the whole file comes back.
 - **Formats:** 8-bit grey or RGB, with or without alpha. Other images are refused, not converted.
 - **File format:** not stable yet, so keep your originals until it is.
 - **paq8px** compresses further, and is far slower.

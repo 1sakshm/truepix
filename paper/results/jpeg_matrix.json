@@ -1,0 +1,17 @@
+{
+ "builds": [
+  "GCC AVX2",
+  "GCC FMA",
+  "GCC SSE2",
+  "GCC -O0",
+  "Clang x64",
+  "Clang x86",
+  "WebAssembly"
+ ],
+ "files": 70,
+ "match_old_baseline": 70,
+ "decodes": 490,
+ "exact": 490,
+ "failed": [],
+ "mismatched": []
+}
